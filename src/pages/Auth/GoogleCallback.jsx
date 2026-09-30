@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, TriangleAlert } from 'lucide-react';
+import { Building2, LayoutDashboard, Loader2, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
-import { authApi } from '@/api';
+import { authApi, setStoredToken } from '@/api';
 import { useAuth } from '@/context/AuthContext';
+import { appRootsFor, canChooseApp, landingPathFor, roleLabel } from '@/utils/roles';
+import { takeOauthReturnTo } from '@/utils/oauthHandoff';
 import { GOOGLE_ERRORS } from './googleErrors';
+
+const APP_CHOICES = [
+  { root: '/company', label: 'Company dashboard', icon: Building2, hint: 'Outage reports, maintenance and broadcasts' },
+  { root: '/dashboard', label: 'Resident app', icon: LayoutDashboard, hint: 'Report and track incidents near you' },
+];
 
 /**
  * Landing page for the Google OAuth round trip.
@@ -15,13 +22,14 @@ import { GOOGLE_ERRORS } from './googleErrors';
  *   failure -> /login?error=<code>   (handled by the login page)
  *
  * All this page does is store the token (mirrored into the `jwt_token` cookie the
- * API reads), restore the session with `me.php`, then go to the dashboard.
+ * API reads), restore the session with `me.php`, then decide where to go.
  */
 export default function GoogleCallback() {
   const [searchParams] = useSearchParams();
   const { refresh } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState('');
+  const [pendingRole, setPendingRole] = useState('');
   const started = useRef(false);
 
   useEffect(() => {
@@ -44,15 +52,70 @@ export default function GoogleCallback() {
       authApi.storeGoogleToken(token);
 
       const user = await refresh();
-      if (user) {
-        navigate('/dashboard', { replace: true });
+      if (!user) {
+        // The token did not produce a session - it is expired, or it belongs to an
+        // account the API will not return. Drop it, or it keeps being replayed on
+        // every later request and signs the user out for good.
+        setStoredToken(null);
+        setError(GOOGLE_ERRORS.session_failed);
         return;
       }
-      setError(GOOGLE_ERRORS.session_failed);
+
+      // The role comes from me.php, never from the token string in the URL.
+      const wanted = takeOauthReturnTo();
+
+      // Staff can reach BOTH apps, so a signed-in electric_company account is not
+      // locked into /company: if no specific destination was requested, offer the
+      // choice instead of silently choosing for them. Residents have one app and go
+      // straight there.
+      if (wanted || !canChooseApp(user.role)) {
+        navigate(landingPathFor(user.role, wanted), { replace: true });
+        return;
+      }
+
+      setPendingRole(user.role);
     };
 
     run();
   }, [searchParams, refresh, navigate]);
+
+  // The chooser: which app does this account want to work in?
+  if (pendingRole && !error) {
+    const options = APP_CHOICES.filter((choice) => appRootsFor(pendingRole).includes(choice.root));
+
+    return (
+      <div className="container-app flex min-h-[70vh] flex-col items-center justify-center gap-5 py-10">
+        <Card className="w-full max-w-md">
+          <CardBody className="text-center">
+            <h1 className="text-lg font-extrabold text-navy-900">Where do you want to go?</h1>
+            <p className="mt-2 text-sm text-navy-600">
+              You are signed in as{' '}
+              <span className="font-semibold text-navy-900">{roleLabel(pendingRole)}</span>. Your
+              account can use both apps - pick one to continue.
+            </p>
+
+            <div className="mt-5 grid gap-2">
+              {options.map((choice) => (
+                <Button
+                  key={choice.root}
+                  size="lg"
+                  fullWidth
+                  icon={choice.icon}
+                  onClick={() => navigate(choice.root, { replace: true })}
+                >
+                  {choice.label}
+                </Button>
+              ))}
+            </div>
+
+            <p className="mt-4 text-xs text-navy-400">
+              {options.map((choice) => choice.hint).join(' · ')}
+            </p>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
 
   if (error) {
     return (

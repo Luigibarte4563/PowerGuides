@@ -11,14 +11,26 @@ import { useNotifications } from '@/hooks/useNotifications';
  * `collapsed` switches it to an icon-only rail on desktop. The labels are then
  * removed from the DOM and the accessible name moves onto the link itself
  * (`aria-label` + `title`), so a rail is never a wall of unlabelled icons.
+ *
+ * The resident and company apps share this chrome, so `items` / `groups` /
+ * `homeTo` / `notificationsTo` are props; they default to the resident app.
  */
-export default function Sidebar({ open, onClose, collapsed = false, onToggleCollapsed }) {
+export default function Sidebar({
+  open,
+  onClose,
+  collapsed = false,
+  onToggleCollapsed,
+  items = DASHBOARD_NAV,
+  groups = NAV_GROUPS,
+  homeTo = '/dashboard',
+  notificationsTo = '/dashboard/notifications',
+  ariaLabel = 'Dashboard navigation',
+}) {
   const { unreadCount } = useNotifications();
 
-  const groups = NAV_GROUPS.map((group) => ({
-    group,
-    items: DASHBOARD_NAV.filter((item) => item.group === group),
-  })).filter((entry) => entry.items.length > 0);
+  const grouped = groups
+    .map((group) => ({ group, items: items.filter((item) => item.group === group) }))
+    .filter((entry) => entry.items.length > 0);
 
   return (
     <>
@@ -31,13 +43,13 @@ export default function Sidebar({ open, onClose, collapsed = false, onToggleColl
       ) : null}
 
       <aside
-        id="dashboard-sidebar"
+        id="sidebar-panel"
         className={clsx(
           'fixed inset-y-0 left-0 z-[750] flex flex-col bg-navy-900 transition-[width,transform] duration-200 lg:translate-x-0',
           collapsed ? 'w-[4.75rem]' : 'w-[17.5rem]',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
-        aria-label="Dashboard navigation"
+        aria-label={ariaLabel}
         data-collapsed={collapsed ? 'true' : 'false'}
       >
         <div
@@ -46,7 +58,7 @@ export default function Sidebar({ open, onClose, collapsed = false, onToggleColl
             collapsed ? 'justify-center px-2' : 'justify-between px-4'
           )}
         >
-          <Logo to="/dashboard" variant="light" showText={!collapsed} />
+          <Logo to={homeTo} variant="light" showText={!collapsed} />
 
           {/*
             Expanded: the toggle sits in the header. Collapsed there is no room
@@ -94,7 +106,7 @@ export default function Sidebar({ open, onClose, collapsed = false, onToggleColl
             collapsed ? 'px-2' : 'pl-3 pr-4'
           )}
         >
-          {groups.map(({ group, items }) => (
+          {grouped.map(({ group, items }) => (
             <div key={group}>
               {collapsed ? (
                 <div className="mx-auto mb-2 h-px w-6 bg-navy-800" aria-hidden="true" />
@@ -105,7 +117,7 @@ export default function Sidebar({ open, onClose, collapsed = false, onToggleColl
               )}
               <ul className="space-y-0.5">
                 {items.map((item) => {
-                  const badge = item.to === '/dashboard/notifications' ? unreadCount : 0;
+                  const badge = item.to === notificationsTo ? unreadCount : 0;
                   return (
                     <li key={item.to}>
                       <NavLink

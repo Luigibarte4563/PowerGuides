@@ -68,4 +68,20 @@ export const heatmapApi = {
     const payload = await apiRequest('/api/cluster/get.php', { params, signal });
     return { items: pickList(payload), count: payload?.count ?? null, raw: payload };
   },
+
+  /**
+   * FR-MAP-3 - persist a calculated cluster. Staff only
+   * (['lineman', 'electric_company', 'admin']).
+   * -> { success, message, cluster_id }
+   *
+   * `status` is NOT an input: the endpoint always writes 'active'. `report_ids` are
+   * looked up for their coordinates and stored with a computed `distance_meters`;
+   * ids that do not resolve are skipped. `barangay_id` is a numeric id, not a name.
+   */
+  async storeCluster(data, { signal } = {}) {
+    return apiRequest('/api/cluster/store.php', { method: 'POST', body: data, signal });
+  },
 };
+
+/** `cluster/store.php` rejects anything outside this list. */
+export const CLUSTER_FORECAST_LEVELS = ['low', 'moderate', 'high', 'critical'];

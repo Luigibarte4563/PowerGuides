@@ -176,3 +176,30 @@ export const QUERY_KEYS = {
   heatmap: ['heatmap'],
   clusters: ['clusters'],
 };
+
+/**
+ * Query keys for the Electric Company Dashboard (`/company`).
+ *
+ * These are deliberately separate from the resident `outages` / `maintenance` keys:
+ * the company list is the staff-scoped `outage_report_electric_com/get.php` view and
+ * bulk status changes must refresh it without touching (or being clobbered by) the
+ * resident caches. Everything that reads outage rows shares the `company-outages`
+ * prefix so a single invalidation after a status change covers all of them.
+ */
+export const COMPANY_QUERY_KEYS = {
+  summary: ['company-summary'],
+  outages: (params) => ['company-outages', params],
+  outage: (id) => ['company-outages', 'detail', id],
+  rawOutages: (params) => ['company-outages', 'raw', params],
+  maintenance: (params) => ['company-maintenance', params],
+  completedMaintenance: ['company-maintenance', 'completed'],
+  maintenanceMap: ['company-maintenance', 'map'],
+  notifications: (params) => ['company-notifications', params],
+  powerStations: (params) => ['company-power-stations', params],
+  myStations: ['company-power-stations', 'mine'],
+  hazards: (params) => ['company-hazards', params],
+  clusters: (params) => ['company-clusters', params],
+};
+
+/** Page size for the client-side tables (the staff endpoints return every row). */
+export const COMPANY_PAGE_SIZE = 25;

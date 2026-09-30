@@ -1,10 +1,19 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { landingPathFor } from '@/utils/roles';
 import { Spinner } from '@/components/ui/States';
 
-/** Keeps signed-in users out of login/register and remembers the target page. */
+/**
+ * Keeps signed-in users out of login/register and remembers the target page.
+ *
+ * The landing path is role-aware (`landingPathFor`), not a hard-coded `/dashboard`:
+ * an electric_company account that is bounced to /login - by RequireRole, by an expired
+ * session, or by hitting Back - must come back to /company. `landingPathFor` also
+ * validates `from`, so a stale target the role cannot reach is discarded instead of
+ * bouncing the user into a redirect loop.
+ */
 export default function PublicOnlyRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, role } = useAuth();
   const location = useLocation();
   const from = location.state?.from;
 
@@ -18,7 +27,7 @@ export default function PublicOnlyRoute() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to={from && from.startsWith('/dashboard') ? from : '/dashboard'} replace />;
+    return <Navigate to={landingPathFor(role, from)} replace />;
   }
 
   return <Outlet />;

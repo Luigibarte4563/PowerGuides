@@ -11,11 +11,18 @@ export default defineConfig({
     },
   },
   server: {
-    // If 5173 is taken Vite falls back to 5174+. The PHP API only allows the
-    // origin `http://localhost:5173` in its CORS headers, so the dev proxy below
-    // keeps API calls same-origin and working on whichever port Vite picks.
-    port: 5173,
-    strictPort: false,
+    // PINNED, and strictPort so Vite refuses to start rather than silently moving.
+    //
+    // This is not cosmetic: the Google OAuth return trip is hardcoded on the server
+    // side (`FRONTEND_URL=http://localhost:5174` in CrowdsourcedAPI/.env, read by
+    // google_callback.php). With strictPort:false, Vite would fall back to 5175+ if
+    // 5174 was busy, and Google would sign the user in and then redirect them to an
+    // origin that is not the app they started from - the round trip just dies.
+    //
+    // The PHP API only allows 5173/5174 (config/cors.php); the proxy below also keeps
+    // API calls same-origin, so CORS is not involved either way.
+    port: 5174,
+    strictPort: true,
     proxy: {
       '/CrowdsourcedAPI': {
         target: 'http://localhost',

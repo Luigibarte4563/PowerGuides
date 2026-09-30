@@ -10,6 +10,7 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { ReferenceProvider } from './context/ReferenceContext';
 import { ToastProvider } from './context/ToastContext';
+import SessionExpiryGuard from './components/SessionExpiryGuard';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,6 +34,7 @@ createRoot(document.getElementById('root')).render(
         <ToastProvider>
           <AuthProvider>
             <ReferenceProvider>
+              <SessionExpiryGuard />
               <App />
             </ReferenceProvider>
           </AuthProvider>

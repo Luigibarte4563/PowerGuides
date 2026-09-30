@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Logo from '@/components/Logo';
 import { Button } from '@/components/ui/Button';
 import { AuthAlert, AuthSuccess } from '@/components/ui/Alert';
+import { setOauthReturnTo } from '@/utils/oauthHandoff';
 
 /** Two-column shell shared by the login and register pages. */
 export default function AuthShell({ title, subtitle, children, footer, aside }) {
@@ -47,19 +48,27 @@ function GoogleIcon(props) {
   );
 }
 
-/** Google OAuth button - the server handles the callback. */
+/**
+ * Google OAuth button - the server handles the callback.
+ *
+ * `redirectTo` is the destination the user was heading for. It CANNOT be sent to the
+ * server: `auth/google_oauth.php::getGoogleAuthUrl()` builds the URL from
+ * `$_ENV['GOOGLE_REDIRECT_URI']` and ignores the query string, so a `?redirect_uri=`
+ * looked like it worked and did nothing. The intent is therefore parked in
+ * `sessionStorage` and picked up by `GoogleCallback` - see `utils/oauthHandoff`.
+ *
+ * Google's own account chooser needs nothing from here: `google.php` already sends
+ * `prompt=select_account`, so Google always asks which account to use instead of
+ * silently reusing the signed-in one.
+ */
 export function GoogleButton({ text = 'Continue with Google', redirectTo }) {
   const [busy, setBusy] = useState(false);
 
   const startGoogleSignIn = () => {
+    setOauthReturnTo(redirectTo || '');
     setBusy(true);
-    // TODO(API-CONFIRM): confirm whether `auth/google.php` accepts a `redirect_uri`
-    // so the user lands back on the dashboard after the server-side callback.
     const base = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost/CrowdsourcedAPI'}/api/auth/google.php`;
-    const url = redirectTo
-      ? `${base}?redirect_uri=${encodeURIComponent(`${window.location.origin}${redirectTo}`)}`
-      : base;
-    window.location.href = url;
+    window.location.href = base;
   };
 
   return (

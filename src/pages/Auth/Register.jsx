@@ -5,6 +5,7 @@ import AuthShell, { AuthAlert, AuthDivider, GoogleButton } from './AuthShell';
 import { Button } from '@/components/ui/Button';
 import { Input, PasswordInput } from '@/components/ui/Input';
 import { useAuth } from '@/context/AuthContext';
+import { landingPathFor } from '@/utils/roles';
 import { toFieldErrors, toUserMessage } from '@/utils/errorMessage';
 import {
   clearFieldError,
@@ -76,13 +77,17 @@ export default function Register() {
       });
 
       // Some deployments log the user in immediately, others do not.
+      let user = null;
       if (!result.autoLoggedIn) {
-        await loginWithRegisteredAccount({
+        user = await loginWithRegisteredAccount({
           email: values.email.trim(),
           password: values.password,
         });
       }
-      navigate('/dashboard', { replace: true });
+      // register.php always creates a `user` account, so this is /dashboard - the
+      // role is read back rather than assumed, keeping the redirect honest if that
+      // ever changes.
+      navigate(landingPathFor(user?.role), { replace: true });
     } catch (error) {
       setErrors(toFieldErrors(error, FIELD_ORDER));
       setFormError(toUserMessage(error, 'We could not create your account.'));

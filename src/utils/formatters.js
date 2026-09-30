@@ -2,16 +2,31 @@
 
 export const DEFAULT_CENTER = { lat: 16.0433, lng: 120.3329, zoom: 13 }; // Dagupan City
 
+/**
+ * NFR-8 - every displayed timestamp is Philippine time.
+ *
+ * The `en-PH` locale only supplies the *formatting* conventions; without an explicit
+ * `timeZone` Intl renders in the browser's own zone, so a crew member checking when a crew
+ * is due from a laptop set to another zone would read the wrong hour. Pinned here rather
+ * than per call site so every screen agrees.
+ */
+export const DISPLAY_TIME_ZONE = 'Asia/Manila';
+
 const DATE_TIME_FORMAT = new Intl.DateTimeFormat('en-PH', {
   dateStyle: 'medium',
   timeStyle: 'short',
+  timeZone: DISPLAY_TIME_ZONE,
 });
 
 const DATE_FORMAT = new Intl.DateTimeFormat('en-PH', {
   dateStyle: 'medium',
+  timeZone: DISPLAY_TIME_ZONE,
 });
 
-const TIME_FORMAT = new Intl.DateTimeFormat('en-PH', { timeStyle: 'short' });
+const TIME_FORMAT = new Intl.DateTimeFormat('en-PH', {
+  timeStyle: 'short',
+  timeZone: DISPLAY_TIME_ZONE,
+});
 
 function toDate(value) {
   if (!value) return null;

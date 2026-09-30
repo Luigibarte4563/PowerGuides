@@ -1,8 +1,10 @@
 import { Route, Routes } from 'react-router-dom';
 import PublicLayout from '@/layouts/PublicLayout';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import CompanyLayout from '@/layouts/CompanyLayout';
 import ProtectedRoute from './ProtectedRoute';
 import PublicOnlyRoute from './PublicOnlyRoute';
+import RequireRole from './RequireRole';
 
 import Landing from '@/pages/Landing';
 import Login from '@/pages/Auth/Login';
@@ -25,9 +27,24 @@ import RiskAreas from '@/pages/Dashboard/RiskAreas';
 import Heatmap from '@/pages/Dashboard/Heatmap';
 import Profile from '@/pages/Dashboard/Profile';
 
+import CompanyOverview from '@/pages/Company/Overview';
+import CompanyOutages from '@/pages/Company/Outages';
+import CompanyOutageDetail from '@/pages/Company/OutageDetail';
+import CompanyMaintenance from '@/pages/Company/Maintenance';
+import CompanyMapRisk from '@/pages/Company/MapRisk';
+import CompanyPowerStations from '@/pages/Company/PowerStations';
+import CompanyNotifications from '@/pages/Company/Notifications';
+import CompanyHazards from '@/pages/Company/Hazards';
+import CompanyProfile from '@/pages/Company/Profile';
+
 /**
  * Route map (Section 7 of the requirements).
  * `/`, `/login`, `/register` are public; everything under `/dashboard` is protected.
+ *
+ * `/company` is the Electric Company Dashboard. It has its own layout and nav, and is
+ * wrapped in `RequireRole` (staff only) on top of `ProtectedRoute`, so a resident
+ * following a company deep link lands on the access-denied page rather than in a
+ * dashboard they cannot use.
  */
 export default function AppRoutes() {
   return (
@@ -64,6 +81,22 @@ export default function AppRoutes() {
           <Route path="risk-areas" element={<RiskAreas />} />
           <Route path="heatmap" element={<Heatmap />} />
           <Route path="profile" element={<Profile />} />
+        </Route>
+      </Route>
+
+      <Route element={<ProtectedRoute />}>
+        <Route element={<RequireRole />}>
+          <Route path="/company" element={<CompanyLayout />}>
+            <Route index element={<CompanyOverview />} />
+            <Route path="outages" element={<CompanyOutages />} />
+            <Route path="outages/:id" element={<CompanyOutageDetail />} />
+            <Route path="maintenance" element={<CompanyMaintenance />} />
+            <Route path="map" element={<CompanyMapRisk />} />
+            <Route path="power-stations" element={<CompanyPowerStations />} />
+            <Route path="notifications" element={<CompanyNotifications />} />
+            <Route path="hazards" element={<CompanyHazards />} />
+            <Route path="profile" element={<CompanyProfile />} />
+          </Route>
         </Route>
       </Route>
 

@@ -90,6 +90,56 @@ export function readImages(record) {
   return [];
 }
 
+/**
+ * Staff view of an outage report, from `outage_report_electric_com/get.php` and
+ * `outage/get.php`.
+ *
+ * The only structural differences from `readOutage` are handled by the shared keys,
+ * so this adds the staff-specific context instead of duplicating the row:
+ *   - `reporter` is a LABEL, not a name. Neither endpoint joins `users`, so the best
+ *     available handle is the resident's `user_id` - showing a real name would mean
+ *     fetching every reporter's profile.
+ *   - `isActive` is the server's flag, kept separate from `status` because
+ *     `update_single.php` clears `is_active` on `resolved` while the status column
+ *     still carries the full history.
+ *   - `canEdit` mirrors `get_detail.php`: staff may open any report, so the detail
+ *     link is never withheld the way the resident app withholds other people's.
+ */
+export const readCompanyOutage = (record) => {
+  const base = readOutage(record);
+  const reporterId = toNumber(readField(record, ['user_id'], null), null);
+
+  return {
+    ...base,
+    reporterId,
+    reporter: reporterId === null ? 'Unknown reporter' : `Resident #${reporterId}`,
+    /** `outage/get.php` returns `report_key`; the company-scoped list does not. */
+    reportKey: readField(record, ['report_key'], ''),
+    isVerified: (base.verifications || []).some(
+      (item) => String(readField(item, ['verification_status'], '')).toLowerCase() === 'confirmed'
+    ),
+  };
+};
+
+/** One row of `get_detail.php`'s `updates[]` (a field update / note). */
+export const readOutageUpdate = (record) => ({
+  raw: record,
+  id: readId(record),
+  message: readField(record, ['update_message', 'message'], ''),
+  toStatus: readField(record, ['to_status', 'status'], ''),
+  createdAt: readField(record, ['created_at', 'updated_at'], ''),
+});
+
+/** One row of `get_detail.php`'s `verifications[]` (a staff verification). */
+export const readVerification = (record) => ({
+  raw: record,
+  id: readId(record),
+  status: readField(record, ['verification_status', 'status'], ''),
+  notes: readField(record, ['notes', 'note'], ''),
+  verifiedBy: toNumber(readField(record, ['verified_by'], null), null),
+  createdAt: readField(record, ['verified_at', 'created_at'], ''),
+});
+
 /** Turn a possibly-relative image path into something the browser can load. */
 export function resolveImageUrl(url) {
   if (!url) return '';

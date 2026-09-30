@@ -72,6 +72,87 @@ export class ApiError extends Error {
 const NETWORK_ERROR_MESSAGE =
   'We could not reach the PowerGuide server. Check your connection and try again.';
 
+/**
+ * Endpoints that answer 401 for a reason the app must NOT treat as an expired
+ * session: a wrong password is a 401, and reacting to it by signing the user out
+ * would wipe a perfectly valid session and bounce them off the page they are on.
+ */
+const AUTH_ENTRY_PATHS = [
+  '/api/auth/login.php',
+  '/api/auth/register.php',
+  '/api/auth/logout.php',
+  '/api/auth/google.php',
+  '/api/auth/google_callback.php',
+];
+
+/**
+ * NFR-1: a 401 from anywhere else means the JWT is gone, invalid or expired, so the
+ * session is over and the user has to sign in again. The client is deliberately free
+ * of React and router imports, so it publishes a hook and the app registers one
+ * (see `SessionExpiryGuard`).
+ *
+ * 403 is NOT treated as a session failure, and that is intentional: this API uses 403
+ * for ordinary business rules as well as permissions - `power_station/create.php` returns
+ * 403 "You already have a power station", and `outage_report/create.php` returns 403 for
+ * an existing active report. Redirecting those to an access-denied page would be wrong, so
+ * they stay as ordinary errors the calling page shows inline. The one exception is a 403
+ * from an endpoint in `ROLE_GATED_PATHS`, which is forwarded to the forbidden handler
+ * because there the role is the only possible cause (FR-AUTH-4b).
+ */
+let onSessionExpired = null;
+
+export function setSessionExpiredHandler(handler) {
+  onSessionExpired = typeof handler === 'function' ? handler : null;
+}
+
+/**
+ * Endpoints where a 403 can ONLY mean "your role no longer allows this" (FR-AUTH-4b).
+ *
+ * The rest of the API answers 403 for ordinary business rules, so those are left alone.
+ * Deliberately EXCLUDED, even though they are role-checked somewhere:
+ *   power_station/create.php      403 "You already have a power station" - a limit, not a role
+ *   maintenance/delete.php        403 when the schedule belongs to another user - ownership
+ *   maintenance/update.php        role-checked but NOT owner-scoped (SEC-2), so any company
+ *                                 user may edit any schedule
+ *   outage_report/create.php      403 for an existing active report / outside the area
+ *   outage_report/get_detail.php  403 for a report the caller does not own
+ *   electrical_hazard/update_status.php  documented as owner-scoped in `api/hazards.js`,
+ *                                 while `utils/roles.js` lists it as staff-wide; until that
+ *                                 contradiction is settled a 403 cannot be read as a role change
+ *
+ * A false positive here would accuse a staff member of a role change that never happened,
+ * so anything ambiguous is left out and the notice simply does not appear. Mirrors the
+ * allow-lists quoted in `utils/roles.js`; the backend stays the source of truth, this only
+ * decides whether the dashboard offers to re-authenticate.
+ */
+const ROLE_GATED_PATHS = new Set([
+  '/api/outage_report_electric_com/get.php',
+  '/api/outage_report_electric_com/update_single.php',
+  '/api/outage_report_electric_com/update_barangay.php',
+  '/api/outage_report_electric_com/update_dagupan.php',
+  '/api/outage/get.php',
+  '/api/outage/verify.php',
+  '/api/outage/add_update.php',
+  '/api/maintenance/create.php',
+  '/api/maintenance/get_complete.php',
+  '/api/notification/create.php',
+  '/api/cluster/store.php',
+]);
+
+let onForbidden = null;
+
+/**
+ * FR-AUTH-4b / SEC-3 - report a 403 that the current role should have been allowed.
+ *
+ * The role travels in the JWT for its whole lifetime, so a demotion or a promotion only
+ * takes effect on the next sign-in. A 403 on one of `ROLE_GATED_PATHS` is the one signal
+ * the client gets that the token no longer matches the account, and the dashboard uses it
+ * to offer a fresh login instead of leaving the user with unexplained failures.
+ */
+export function setForbiddenHandler(handler) {
+  onForbidden = typeof handler === 'function' ? handler : null;
+}
+
 const STATUS_ERROR_MESSAGES = {
   400: 'Some of the information you entered is not valid. Please review the form and try again.',
   401: 'Your session has expired. Please sign in again.',
@@ -263,10 +344,22 @@ export async function apiRequest(path, options = {}) {
 
   if (!response.ok) {
     const { message, errors } = readErrorDetails(payload);
-    throw new ApiError(
+    const error = new ApiError(
       message || STATUS_ERROR_MESSAGES[response.status] || 'Something went wrong. Please try again.',
       { status: response.status, errors, payload }
     );
+
+    if (response.status === 401 && onSessionExpired) {
+      const cleanPath = path.startsWith('/') ? path : `/${path}`;
+      if (!AUTH_ENTRY_PATHS.includes(cleanPath)) onSessionExpired(error);
+    }
+
+    if (response.status === 403 && onForbidden) {
+      const cleanPath = path.startsWith('/') ? path : `/${path}`;
+      if (ROLE_GATED_PATHS.has(cleanPath)) onForbidden({ path: cleanPath, error });
+    }
+
+    throw error;
   }
 
   // Some PHP endpoints answer 200 with an error flag instead of a 4xx status.

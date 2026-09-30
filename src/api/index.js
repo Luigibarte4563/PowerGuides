@@ -8,7 +8,15 @@ export * from './client';
 export { authApi, userFromAuthResponse } from './auth';
 export { getReference } from './reference';
 export { outagesApi, extractCreatedId } from './outages';
-export { maintenanceApi, UPCOMING_STATUSES } from './maintenance';
+export {
+  companyOutagesApi,
+  countAffected,
+  isOpenCompanyStatus,
+  MANAGEABLE_STATUSES,
+  OPEN_STATUSES,
+  VERIFICATION_STATUSES,
+} from './companyOutages';
+export { maintenanceApi, MAINTAINABLE_STATUSES, UPCOMING_STATUSES } from './maintenance';
 export { powerStationsApi } from './powerStations';
 export { notificationsApi } from './notifications';
 export { locationApi } from './location';
@@ -17,4 +25,4 @@ export { safetyTimersApi } from './safetyTimers';
 export { floodsApi, FLOOD_LEVELS } from './floods';
 export { hazardsApi, HAZARD_SEVERITIES, HAZARD_STATUSES } from './hazards';
 export { getNearbyRisks } from './risk';
-export { heatmapApi } from './heatmap';
+export { heatmapApi, CLUSTER_FORECAST_LEVELS } from './heatmap';

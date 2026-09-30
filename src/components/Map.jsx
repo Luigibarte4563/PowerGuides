@@ -3,7 +3,6 @@ import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-le
 import L from 'leaflet';
 import clsx from 'clsx';
 import { DEFAULT_CENTER } from '@/utils/formatters';
-
 /**
  * Basemap providers, tried in order. Both need no API key.
  *
@@ -350,6 +349,30 @@ export function RadiusCircle({ center, radius, color = '#2563EB' }) {
 }
 
 /**
+ * A circle with an optional popup - used for cluster footprints and risk radii.
+ *
+ * Wrapped rather than used directly because react-leaflet paths do NOT treat children
+ * as popup content: a path ports its children into its own DOM node. The popup has to
+ * be an explicit `<Popup>` child for `bindPopup` to be called, and that is easy to get
+ * wrong, so callers get one component with a `children`-means-popup contract.
+ */
+export function MapCircle({ center, radius, color = '#D97706', fillColor, fillOpacity = 0.18, weight = 1.5, children }) {
+  const lat = Number(center?.lat);
+  const lng = Number(center?.lng ?? center?.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number(radius)) return null;
+
+  return (
+    <Circle
+      center={[lat, lng]}
+      radius={Number(radius)}
+      pathOptions={{ color, weight, fillColor: fillColor || color, fillOpacity }}
+    >
+      {children ? <Popup>{children}</Popup> : null}
+    </Circle>
+  );
+}
+
+/**
  * Heat gradient, shared by the layer and the Heatmap legend so the two cannot
  * drift apart. Fully saturated stops: leaflet.heat multiplies the gradient colour
  * by the pixel alpha, so a pale stop renders as a pale wash.
@@ -458,7 +481,6 @@ function PinSwatch({ color, className }) {
     <span
       className={clsx('block shrink-0', className)}
       aria-hidden="true"
-      // eslint-disable-next-line react/no-danger
       dangerouslySetInnerHTML={{ __html: pinSvg(color) }}
     />
   );

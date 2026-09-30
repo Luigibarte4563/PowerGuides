@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
 import { useMarkAllAsRead, useNotifications } from '@/hooks/useNotifications';
 import { findNavItem } from '@/routes/navItems';
+import { ROLE_LABELS, normaliseRole } from '@/utils/roles';
 import { formatRelativeTime, humanize } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
 
@@ -36,14 +37,28 @@ function useDismissable(ref, onDismiss) {
   }, [ref, onDismiss]);
 }
 
-/** Dashboard top bar: page title, notification bell with unread count, user menu. */
-export default function Topbar({ onOpenSidebar }) {
-  const { user, logout } = useAuth();
+/**
+ * Dashboard top bar: page title, notification bell with unread count, user menu.
+ *
+ * Shared by the resident and company layouts, so the page title, the account-menu
+ * links and the subtitle come from props; they default to the resident app.
+ */
+export default function Topbar({
+  onOpenSidebar,
+  findItem = findNavItem,
+  appLabel = 'PowerGuide Dagupan',
+  fallbackTitle = 'Dashboard',
+  profileTo = '/dashboard/profile',
+  locationTo = '/dashboard/location',
+  notificationsTo = '/dashboard/notifications',
+  showLocationLink = true,
+}) {
+  const { user, logout, role } = useAuth();
   const navigate = useNavigate();
   const routerLocation = useLocation();
 
-  const navItem = findNavItem(routerLocation.pathname);
-  const pageTitle = navItem?.label || 'Dashboard';
+  const navItem = findItem(routerLocation.pathname);
+  const pageTitle = navItem?.label || fallbackTitle;
 
   const { notifications, unreadCount, isLoading } = useNotifications();
   const markAll = useMarkAllAsRead();
@@ -77,13 +92,13 @@ export default function Topbar({ onOpenSidebar }) {
         onClick={onOpenSidebar}
         className="inline-flex h-10 w-10 items-center justify-center rounded-control text-navy-700 transition hover:bg-navy-100 lg:hidden"
         aria-label="Open navigation"
-        aria-controls="dashboard-sidebar"
+        aria-controls="sidebar-panel"
       >
         <Menu className="h-5 w-5" aria-hidden="true" />
       </button>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-navy-400">PowerGuide Dagupan</p>
+        <p className="truncate text-sm font-medium text-navy-400">{appLabel}</p>
         <h1 className="truncate text-base font-extrabold text-navy-900 sm:text-lg">{pageTitle}</h1>
       </div>
 
@@ -158,13 +173,13 @@ export default function Topbar({ onOpenSidebar }) {
             </ul>
 
             <div className="border-t border-navy-100 p-2">
-              <Link
-                to="/dashboard/notifications"
-                onClick={() => setBellOpen(false)}
-                className="block rounded-control px-3 py-2 text-center text-sm font-semibold text-navy-700 transition hover:bg-navy-50"
-              >
-                View all notifications
-              </Link>
+                <Link
+                  to={notificationsTo}
+                  onClick={() => setBellOpen(false)}
+                  className="block rounded-control px-3 py-2 text-center text-sm font-semibold text-navy-700 transition hover:bg-navy-50"
+                >
+                  View all notifications
+                </Link>
             </div>
           </div>
         ) : null}
@@ -197,11 +212,12 @@ export default function Topbar({ onOpenSidebar }) {
             <div className="border-b border-navy-100 px-4 py-3">
               <p className="truncate text-sm font-bold text-navy-900">{user?.name}</p>
               <p className="truncate text-xs text-navy-500">{user?.email}</p>
+              {role ? <p className="mt-1 text-xs font-semibold text-primary-700">{ROLE_LABELS[normaliseRole(role)] || role}</p> : null}
             </div>
             <ul className="p-2 text-sm">
               <li>
                 <Link
-                  to="/dashboard/profile"
+                  to={profileTo}
                   onClick={() => setMenuOpen(false)}
                   className="flex items-center gap-2 rounded-control px-3 py-2 font-semibold text-navy-700 transition hover:bg-navy-50"
                 >
@@ -209,16 +225,18 @@ export default function Topbar({ onOpenSidebar }) {
                   My profile
                 </Link>
               </li>
-              <li>
-                <Link
-                  to="/dashboard/location"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2 rounded-control px-3 py-2 font-semibold text-navy-700 transition hover:bg-navy-50"
-                >
-                  <Settings className="h-4 w-4 text-navy-400" aria-hidden="true" />
-                  My location
-                </Link>
-              </li>
+              {showLocationLink ? (
+                <li>
+                  <Link
+                    to={locationTo}
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 rounded-control px-3 py-2 font-semibold text-navy-700 transition hover:bg-navy-50"
+                  >
+                    <Settings className="h-4 w-4 text-navy-400" aria-hidden="true" />
+                    My location
+                  </Link>
+                </li>
+              ) : null}
             </ul>
             {error ? <p className="px-4 pb-2 text-xs font-medium text-danger-600">{error}</p> : null}
             <div className="border-t border-navy-100 p-2">

@@ -6,6 +6,7 @@ import { GOOGLE_ERRORS } from './googleErrors';
 import { Button } from '@/components/ui/Button';
 import { Input, PasswordInput } from '@/components/ui/Input';
 import { useAuth } from '@/context/AuthContext';
+import { landingPathFor, normaliseRole, ROLE_LABELS } from '@/utils/roles';
 import { toFieldErrors, toUserMessage } from '@/utils/errorMessage';
 import { clearFieldError, collectErrors, hasErrors, validateEmail, validateRequired } from '@/utils/validators';
 
@@ -21,6 +22,21 @@ export default function Login() {
 
   const successMessage = location.state?.registered
     ? 'Your account was created. Log in to start reporting.'
+    : '';
+
+  // Set by SessionExpiryGuard when the API rejected a request because the JWT is
+  // gone. Distinct from `registered` so the user is told WHY they are back here.
+  const expiredMessage = location.state?.expired
+    ? 'Your session expired after a period of inactivity. Please sign in again.'
+    : '';
+
+  // Set by RoleChangeGuard when the API refused a call the current JWT role used to be
+  // allowed to make (FR-AUTH-4b). The role lives in the token until it expires, so the
+  // only way to pick up the new one is a fresh sign-in.
+  const staleRoleMessage = location.state?.staleRole
+    ? `Your access was changed while you were signed in. Sign in again to continue as ${
+        ROLE_LABELS[normaliseRole(location.state.staleRole)] || 'your updated role'
+      }.`
     : '';
 
   // google_callback.php redirects failures here as /login?error=<code>.
@@ -56,8 +72,8 @@ export default function Login() {
 
     setSubmitting(true);
     try {
-      await login({ email: values.email.trim(), password: values.password });
-      navigate(from && from.startsWith('/dashboard') ? from : '/dashboard', { replace: true });
+      const user = await login({ email: values.email.trim(), password: values.password });
+      navigate(landingPathFor(user?.role, from), { replace: true });
     } catch (error) {
       setErrors(toFieldErrors(error, FIELD_ORDER));
       setFormError(toUserMessage(error, 'Invalid email or password.'));
@@ -94,6 +110,12 @@ export default function Login() {
         </div>
       ) : null}
       {successMessage ? <div className="mb-4"><AuthSuccess>{successMessage}</AuthSuccess></div> : null}
+      {expiredMessage ? <div className="mb-4"><AuthSuccess>{expiredMessage}</AuthSuccess></div> : null}
+      {staleRoleMessage ? (
+        <div className="mb-4">
+          <AuthSuccess>{staleRoleMessage}</AuthSuccess>
+        </div>
+      ) : null}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <Input
@@ -127,7 +149,7 @@ export default function Login() {
 
       <AuthDivider />
 
-      <GoogleButton redirectTo="/dashboard" />
+      <GoogleButton redirectTo={from} />
 
       <p className="mt-6 text-center text-xs text-navy-400">
         <Link to="/" className="rounded font-semibold text-navy-600 transition hover:text-navy-900">
