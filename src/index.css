@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-navy-900 font-sans antialiased;
+    margin: 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-bold tracking-tight text-navy-900;
+  }
+
+  /* Visible, consistent keyboard focus everywhere (accessibility). */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white;
+  }
+
+  /* Inputs inherit the app font instead of the browser default. */
+  input,
+  select,
+  textarea,
+  button {
+    font-family: inherit;
+  }
+
+  ::placeholder {
+    @apply text-navy-300;
+  }
+}
+
+@layer components {
+  .container-app {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-control focus:bg-navy-900 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white;
+  }
+
+  .prose-navy p {
+    @apply text-navy-600;
+  }
+
+  /*
+   * Sidebar nav scrollbar, tinted into the navy panel so it reads as part of the
+   * menu instead of a light browser scrollbar sitting on dark navy. The track is
+   * transparent so the thumb appears to float on navy-900. The nav is kept
+   * scrollable (rather than clipping) so links stay reachable on short windows.
+   */
+  .pg-sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.navy.700') transparent;
+  }
+
+  .pg-sidebar-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .pg-sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .pg-sidebar-scroll::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-navy-700;
+    /* Inset by a transparent border so the visible pill is thinner than the
+       8px the scrollbar occupies. */
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  .pg-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    @apply bg-navy-600;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* ---------- Leaflet overrides so maps match the design tokens ---------- */
+.leaflet-container {
+  @apply w-full bg-navy-100 font-sans;
+  z-index: 0;
+}
+
+.leaflet-control-zoom a,
+.leaflet-bar a {
+  @apply rounded-control text-navy-800 shadow-card;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  @apply rounded-card bg-white text-navy-800 shadow-pop;
+}
+
+.leaflet-popup-content {
+  @apply m-0 min-w-[12rem] p-3 text-sm;
+}
+
+.leaflet-popup-close-button {
+  @apply p-2 text-navy-400;
+}
+
+/* The app-wide map pin (see `pinSvg` in components/Map.jsx). Leaflet gives
+   markers a white box by default, so the background/border are cleared and the
+   shadow is a drop-shadow on the SVG - a box-shadow would clip the tip. */
+.pg-pin {
+  background: none;
+  border: 0;
+}
+
+.pg-pin > svg {
+  display: block;
+  filter: drop-shadow(0 3px 5px rgb(15 23 42 / 0.35));
+}
+
+/*
+ * Invisible click targets laid over the heat blobs (see `MapHitAreas`). The box is
+ * sized by Leaflet, so the whole area is clickable, and a faint ring on hover
+ * shows there is something to click. `pointer-events` is deliberately left alone.
+ */
+.pg-hit-area {
+  border-radius: 9999px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 120ms ease-out, box-shadow 120ms ease-out;
+}
+
+.pg-hit-area:hover {
+  background-color: rgb(15 23 42 / 0.06);
+  box-shadow: inset 0 0 0 2px rgb(245 158 11 / 0.55);
+}
