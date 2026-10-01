@@ -8,13 +8,18 @@ import { Card, CardBody } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { TBody, TD, TH, THead, TR, Table } from '@/components/ui/Table';
 import DataView from '@/components/DataView';
+import MyAssignmentList from '@/components/MyAssignmentList';
 import RecordCard from '@/components/RecordCard';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Pagination from '@/components/Pagination';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { linemanAssignmentsApi } from '@/api';
-import { useAssignmentList, useInvalidateAssignments } from '@/hooks/useLinemanAssignments';
+import {
+  useAssignmentList,
+  useMyAssignments,
+  useInvalidateAssignments,
+} from '@/hooks/useLinemanAssignments';
 import { COMPANY_PAGE_SIZE, COMPANY_QUERY_KEYS } from '@/utils/constants';
 import { formatDateTime } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
@@ -23,10 +28,15 @@ import AssignmentFormModal from './components/AssignmentFormModal';
 /**
  * Module ASSIGN - lineman to barangay assignments (`/company/assignments`).
  *
- * The whole page is manager-only: `lineman_assignment/{get,create,update,delete,linemen}`
- * all require `electric_company` or `admin`, and `my.php` (the lineman's own view) is a
- * separate screen. A lineman who reaches this URL gets the access notice rather than a
- * list of 403s, which is why `enabled: isManager` keeps the requests off the wire.
+ * Two audiences share this route, because `defaultRootFor('lineman')` is `/company` and a
+ * lineman lands here first:
+ *
+ *   - Managers (`electric_company`, `admin`) get the full table, since
+ *     `lineman_assignment/{get,create,update,delete,linemen}` all admit them.
+ *   - A lineman gets their OWN active assignments from `my.php`, rendered by the shared
+ *     `MyAssignmentList` that `/dashboard/assignments` also uses. They cannot assign
+ *     anyone, and `enabled: isManager` keeps the manager queries off the wire so the tab
+ *     cannot fire a list of 403s at them.
  *
  * Assignment rows are the source of truth, not this screen: the backend scopes a
  * lineman's outage endpoints from the same table, so an edit here changes what they can
@@ -48,6 +58,18 @@ export default function Assignments() {
   const listQuery = useAssignmentList({ status: status || undefined }, { enabled: isManager });
 
   const rows = useMemo(() => listQuery.data || [], [listQuery.data]);
+
+  const isLineman = role === 'lineman';
+
+  /*
+   * A lineman landing here is a normal outcome rather than a mistake: `defaultRootFor`
+   * sends `lineman` to `/company`, so this tab is where they actually begin. They are
+   * shown their OWN active rows from `my.php` - the same view `/dashboard/assignments`
+   * renders - instead of a dead end, and `enabled: isManager` keeps the manager table off
+   * the wire for them so no request here can answer 403.
+   */
+  const myQuery = useMyAssignments({ enabled: isLineman && !isManager });
+  const myRows = useMemo(() => myQuery.data || [], [myQuery.data]);
   const pageCount = Math.max(1, Math.ceil(rows.length / COMPANY_PAGE_SIZE));
   const pageRows = useMemo(
     () => rows.slice((page - 1) * COMPANY_PAGE_SIZE, page * COMPANY_PAGE_SIZE),
@@ -91,6 +113,24 @@ export default function Assignments() {
   };
 
   if (!isManager) {
+    if (isLineman) {
+      return (
+        <div className="space-y-6">
+          <PageHeader
+            title="My Assigned Barangays"
+            description="The barangays you are assigned to cover. Outage reports in these areas are the ones you can review, verify and update."
+          />
+
+          <MyAssignmentList
+            assignments={myRows}
+            isLoading={myQuery.isLoading}
+            error={myQuery.isError}
+            onRetry={() => myQuery.refetch()}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-6">
         <PageHeader
@@ -100,9 +140,7 @@ export default function Assignments() {
         <Card>
           <CardBody>
             <p className="text-sm text-navy-600">
-              {role === 'lineman'
-                ? 'Your assigned barangays are listed on your own dashboard. Assigning linemen is limited to electric company and admin accounts.'
-                : 'Assigning linemen is limited to electric company and admin accounts.'}
+              Assigning linemen is limited to electric company and admin accounts.
             </p>
           </CardBody>
         </Card>

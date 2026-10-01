@@ -30,12 +30,13 @@ import { useToast } from '@/context/ToastContext';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useCompanyOutageList } from '@/hooks/useCompanyOutages';
 import { useMyAssignments } from '@/hooks/useLinemanAssignments';
-import { companyOutagesApi, MANAGEABLE_STATUSES } from '@/api';
+import { companyOutagesApi } from '@/api';
 import { COMPANY_PAGE_SIZE, COMPANY_QUERY_KEYS, severityTone, statusTone } from '@/utils/constants';
 import { readCompanyOutage } from '@/utils/records';
 import { formatDateTime, formatRelativeTime, humanize } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
 import BulkStatusDialog from './components/BulkStatusDialog';
+import StatusChangeDialog from '@/components/StatusChangeDialog';
 
 const SCOPES = [
   { value: 'scoped', label: 'Company view', icon: Zap },
@@ -481,14 +482,14 @@ export default function Outages() {
           : 'Company view: reports visible to the utility. The API returns all matching rows, so search, sorting, the date range and paging happen in your browser.'}
       </p>
 
-      <SingleStatusDialog
-        outage={statusTarget}
-        onClose={() => setStatusTarget(null)}
-        onSubmit={(nextStatus) =>
-          singleMutation.mutateAsync({ id: statusTarget.id, nextStatus })
-        }
-        loading={singleMutation.isPending}
-      />
+<StatusChangeDialog
+      open={Boolean(statusTarget)}
+      reportLabel={statusTarget?.locationName || statusTarget?.barangay}
+      currentStatus={statusTarget?.status}
+      onClose={() => setStatusTarget(null)}
+      onSubmit={(nextStatus) => singleMutation.mutateAsync({ id: statusTarget.id, nextStatus })}
+      loading={singleMutation.isPending}
+    />
 
       <BulkStatusDialog
         open={Boolean(bulk)}
@@ -498,54 +499,5 @@ export default function Outages() {
         onCompleted={bulkDone}
       />
     </div>
-  );
-}
-
-/** FR-OUT-6 - change one report's status, restricted to the whitelisted values. */
-function SingleStatusDialog({ outage, onClose, onSubmit, loading }) {
-  const [nextStatus, setNextStatus] = useState('');
-
-  useEffect(() => {
-    setNextStatus('');
-  }, [outage?.id]);
-
-  return (
-    <Modal
-      open={Boolean(outage)}
-      onClose={loading ? undefined : onClose}
-      title="Change report status"
-      size="sm"
-      closeOnBackdrop={!loading}
-      description={
-        outage
-          ? `Currently ${humanize(outage.status, 'unset')} - ${outage.locationName || outage.barangay || 'this report'}.`
-          : ''
-      }
-      footer={
-        <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => onSubmit(nextStatus)}
-            loading={loading}
-            disabled={!nextStatus || nextStatus === outage?.status}
-          >
-            Update status
-          </Button>
-        </>
-      }
-    >
-      <Select
-        label="New status"
-        required
-        options={MANAGEABLE_STATUSES}
-        placeholder="Select a status"
-        value={nextStatus}
-        onChange={(event) => setNextStatus(event.target.value)}
-        disabled={loading}
-        hint="Marking a report resolved also clears its active flag on the server."
-      />
-    </Modal>
   );
 }

@@ -37,7 +37,11 @@ export default function Profile() {
   const { user, logout, role } = useAuth();
   const { roles } = useReference();
   const { notifications, unreadCount } = useNotifications();
-  const { summary } = useCompanySummary();
+  const isManager = hasRole(role, MANAGER_ROLES);
+  // Only `activeOutages` is read below, but the flag has to be explicit: a lineman must not
+  // fire `maintenance/get_complete` or `lineman_assignment/*`, which refuse them
+  // permanently, and the client reports that 403 as "your access may have changed".
+  const { summary } = useCompanySummary({ includeManagerCounts: isManager });
   const navigate = useNavigate();
 
   const [error, setError] = useState('');
@@ -54,8 +58,6 @@ export default function Profile() {
       setLoggingOut(false);
     }
   };
-
-  const isManager = hasRole(role, MANAGER_ROLES);
 
   return (
     <div className="space-y-6">
