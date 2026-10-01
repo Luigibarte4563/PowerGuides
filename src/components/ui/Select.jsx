@@ -54,7 +54,7 @@ export const Select = forwardRef(function Select(
           id={selectId}
           aria-invalid={error ? 'true' : undefined}
           aria-describedby={error && selectId ? `${selectId}-error` : hint && selectId ? `${selectId}-hint` : undefined}
-          className={clsx(CONTROL_CLASS, 'appearance-none pr-10', error && 'border-danger-500', className)}
+          className={clsx(CONTROL_CLASS, 'appearance-none pr-10', error && 'border-danger-500 dark:border-danger-500/60', className)}
           disabled={loading || rest.disabled}
           {...rest}
         >

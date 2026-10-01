@@ -9,6 +9,7 @@ import './index.css';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { ReferenceProvider } from './context/ReferenceContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import SessionExpiryGuard from './components/SessionExpiryGuard';
 
@@ -31,14 +32,16 @@ createRoot(document.getElementById('root')).render(
       <BrowserRouter
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
-        <ToastProvider>
-          <AuthProvider>
-            <ReferenceProvider>
-              <SessionExpiryGuard />
-              <App />
-            </ReferenceProvider>
-          </AuthProvider>
-        </ToastProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <ReferenceProvider>
+                <SessionExpiryGuard />
+                <App />
+              </ReferenceProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </ThemeProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>

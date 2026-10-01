@@ -11,7 +11,7 @@ export function Table({ children, className }) {
 
 export function THead({ children }) {
   return (
-    <thead className="border-b border-navy-100 bg-navy-50/70 text-xs uppercase tracking-wide text-navy-500">
+    <thead className="border-b border-navy-100 bg-navy-50/70 text-xs uppercase tracking-wide text-navy-500 dark:border-navy-700 dark:bg-navy-900/70 dark:text-navy-400">
       {children}
     </thead>
   );
@@ -35,12 +35,12 @@ export function TH({ children, className, align = 'left', ...rest }) {
 }
 
 export function TBody({ children }) {
-  return <tbody className="divide-y divide-navy-100">{children}</tbody>;
+  return <tbody className="divide-y divide-navy-100 dark:divide-navy-700">{children}</tbody>;
 }
 
 export function TR({ children, className, ...rest }) {
   return (
-    <tr className={clsx('transition hover:bg-navy-50/60', className)} {...rest}>
+    <tr className={clsx('transition hover:bg-navy-50/60 dark:hover:bg-navy-700/40', className)} {...rest}>
       {children}
     </tr>
   );
@@ -50,7 +50,7 @@ export function TD({ children, className, align = 'left', ...rest }) {
   return (
     <td
       className={clsx(
-        'px-4 py-3 align-middle text-navy-700',
+        'px-4 py-3 align-middle text-navy-700 dark:text-navy-200',
         align === 'right' && 'text-right',
         align === 'center' && 'text-center',
         className

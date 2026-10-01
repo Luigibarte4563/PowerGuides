@@ -46,7 +46,7 @@ export default function CompanyLayout() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="min-h-screen bg-canvas dark:bg-navy-950">
       <a href="#company-content" className="skip-link">
         Skip to main content
       </a>

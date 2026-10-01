@@ -91,22 +91,22 @@ export default function Modal({
         tabIndex={-1}
         onKeyDown={handleKeyDown}
         className={clsx(
-          'relative z-10 w-full animate-slide-up rounded-t-2xl bg-white shadow-pop focus:outline-none sm:rounded-card',
+          'relative z-10 w-full animate-slide-up rounded-t-2xl bg-white shadow-pop focus:outline-none dark:bg-navy-800 dark:shadow-pop-dark sm:rounded-card',
           SIZES[size] || SIZES.md,
           className
         )}
       >
         {title ? (
-          <div className="flex items-start justify-between gap-4 border-b border-navy-100 p-5">
+          <div className="flex items-start justify-between gap-4 border-b border-navy-100 p-5 dark:border-navy-700">
             <div className="min-w-0">
-              <h2 className="text-lg font-bold text-navy-900">{title}</h2>
-              {description ? <p className="mt-1 text-sm text-navy-500">{description}</p> : null}
+              <h2 className="text-lg font-bold text-navy-900 dark:text-white">{title}</h2>
+              {description ? <p className="mt-1 text-sm text-navy-500 dark:text-navy-400">{description}</p> : null}
             </div>
             {onClose ? (
               <button
                 type="button"
                 onClick={onClose}
-                className="-m-1 rounded-control p-1 text-navy-400 transition hover:bg-navy-50 hover:text-navy-700"
+                className="-m-1 rounded-control p-1 text-navy-400 transition hover:bg-navy-50 hover:text-navy-700 dark:hover:bg-navy-700 dark:hover:text-white"
                 aria-label="Close dialog"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
@@ -118,7 +118,7 @@ export default function Modal({
         <div className="max-h-[70vh] overflow-y-auto p-5">{children}</div>
 
         {footer ? (
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-navy-100 bg-navy-50/60 p-4 sm:rounded-b-card">
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-navy-100 bg-navy-50/60 p-4 dark:border-navy-700 dark:bg-navy-900/60 sm:rounded-b-card">
             {footer}
           </div>
         ) : null}

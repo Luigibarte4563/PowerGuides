@@ -2,9 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Dark theme.
+ *
+ * `data-theme="dark"` is set on <html> by ThemeContext (and by the inline
+ * bootstrap in index.html so the first paint is already correct). `darkMode` in
+ * tailwind.config.js is keyed to that attribute, so plain `dark:` utilities work
+ * here and throughout the components.
+ */
 @layer base {
   :root {
     color-scheme: light;
+  }
+
+  [data-theme='dark'] {
+    color-scheme: dark;
   }
 
   html {
@@ -12,7 +24,7 @@
   }
 
   body {
-    @apply bg-canvas text-navy-900 font-sans antialiased;
+    @apply bg-canvas text-navy-900 font-sans antialiased dark:bg-navy-950 dark:text-navy-100;
     margin: 0;
   }
 
@@ -20,12 +32,12 @@
   h2,
   h3,
   h4 {
-    @apply font-bold tracking-tight text-navy-900;
+    @apply font-bold tracking-tight text-navy-900 dark:text-navy-50;
   }
 
   /* Visible, consistent keyboard focus everywhere (accessibility). */
   :focus-visible {
-    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white;
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-navy-950;
   }
 
   /* Inputs inherit the app font instead of the browser default. */
@@ -39,6 +51,14 @@
   ::placeholder {
     @apply text-navy-300;
   }
+
+  /*
+   * Native `<option>` lists are painted by the browser, not by Tailwind classes,
+   * so they need an explicit dark background or they render as white-on-white.
+   */
+  [data-theme='dark'] option {
+    @apply bg-navy-800 text-navy-100;
+  }
 }
 
 @layer components {
@@ -51,7 +71,7 @@
   }
 
   .prose-navy p {
-    @apply text-navy-600;
+    @apply text-navy-600 dark:text-navy-300;
   }
 
   /*
@@ -94,18 +114,27 @@
 
 /* ---------- Leaflet overrides so maps match the design tokens ---------- */
 .leaflet-container {
-  @apply w-full bg-navy-100 font-sans;
+  @apply w-full bg-navy-100 font-sans dark:bg-navy-800;
   z-index: 0;
 }
 
+/*
+ * Leaflet ships its own light-theme CSS for these controls, so the colours have
+ * to be overridden explicitly - a `dark:` utility alone would lose to it.
+ */
 .leaflet-control-zoom a,
 .leaflet-bar a {
-  @apply rounded-control text-navy-800 shadow-card;
+  @apply rounded-control bg-white text-navy-800 shadow-card dark:bg-navy-800 dark:text-navy-100 dark:shadow-card-dark;
+}
+
+.leaflet-control-zoom a:hover,
+.leaflet-bar a:hover {
+  @apply bg-navy-50 dark:bg-navy-700;
 }
 
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
-  @apply rounded-card bg-white text-navy-800 shadow-pop;
+  @apply rounded-card bg-white text-navy-800 shadow-pop dark:bg-navy-800 dark:text-navy-100 dark:shadow-pop-dark;
 }
 
 .leaflet-popup-content {
@@ -113,7 +142,7 @@
 }
 
 .leaflet-popup-close-button {
-  @apply p-2 text-navy-400;
+  @apply p-2 text-navy-400 dark:text-navy-300;
 }
 
 /* The app-wide map pin (see `pinSvg` in components/Map.jsx). Leaflet gives

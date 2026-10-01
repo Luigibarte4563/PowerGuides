@@ -1,13 +1,13 @@
 import clsx from 'clsx';
 
 const TONES = {
-  neutral: 'bg-navy-100 text-navy-700 ring-navy-200',
-  info: 'bg-info-50 text-info-700 ring-info-200',
-  success: 'bg-success-50 text-success-700 ring-success-200',
-  warning: 'bg-warning-50 text-warning-700 ring-warning-200',
-  danger: 'bg-danger-50 text-danger-700 ring-danger-200',
-  primary: 'bg-primary-100 text-primary-800 ring-primary-200',
-  navy: 'bg-navy-800 text-white ring-navy-800',
+  neutral: 'bg-navy-100 text-navy-700 ring-navy-200 dark:bg-navy-700 dark:text-navy-100 dark:ring-navy-600',
+  info: 'bg-info-50 text-info-700 ring-info-200 dark:bg-info-500/20 dark:text-info-200 dark:ring-info-500/40',
+  success: 'bg-success-50 text-success-700 ring-success-200 dark:bg-success-500/20 dark:text-success-200 dark:ring-success-500/40',
+  warning: 'bg-warning-50 text-warning-700 ring-warning-200 dark:bg-warning-500/20 dark:text-warning-200 dark:ring-warning-500/40',
+  danger: 'bg-danger-50 text-danger-700 ring-danger-200 dark:bg-danger-500/20 dark:text-danger-200 dark:ring-danger-500/40',
+  primary: 'bg-primary-100 text-primary-800 ring-primary-200 dark:bg-primary-500/20 dark:text-primary-200 dark:ring-primary-500/40',
+  navy: 'bg-navy-800 text-white ring-navy-800 dark:bg-navy-700 dark:text-white dark:ring-navy-600',
 };
 
 /**

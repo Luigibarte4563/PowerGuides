@@ -8,7 +8,7 @@ export function AuthAlert({ children, className }) {
     <div
       role="alert"
       className={clsx(
-        'flex items-start gap-2.5 rounded-control border border-danger-200 bg-danger-50 p-3.5 text-sm font-medium text-danger-700',
+        'flex items-start gap-2.5 rounded-control border border-danger-200 bg-danger-50 p-3.5 text-sm font-medium text-danger-700 dark:border-danger-500/40 dark:bg-danger-500/15 dark:text-danger-200',
         className
       )}
     >
@@ -25,7 +25,7 @@ export function AuthSuccess({ children, className }) {
     <div
       role="status"
       className={clsx(
-        'flex items-start gap-2.5 rounded-control border border-success-200 bg-success-50 p-3.5 text-sm font-medium text-success-700',
+        'flex items-start gap-2.5 rounded-control border border-success-200 bg-success-50 p-3.5 text-sm font-medium text-success-700 dark:border-success-500/40 dark:bg-success-500/15 dark:text-success-200',
         className
       )}
     >
@@ -39,6 +39,8 @@ export function AuthSuccess({ children, className }) {
 export function InfoNote({ children, className }) {
   if (!children) return null;
   return (
-    <p className={clsx('rounded-control bg-navy-50 p-3 text-xs text-navy-600', className)}>{children}</p>
+    <p className={clsx('rounded-control bg-navy-50 p-3 text-xs text-navy-600 dark:bg-navy-800 dark:text-navy-300', className)}>
+      {children}
+    </p>
   );
 }

@@ -22,12 +22,12 @@ export default function PublicLayout() {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-white dark:bg-navy-950">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
 
-      <header className="sticky top-0 z-[800] border-b border-navy-100 bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-[800] border-b border-navy-100 bg-white/90 backdrop-blur dark:border-navy-700 dark:bg-navy-900/90">
         <div className="container-app flex h-16 items-center justify-between gap-4">
           <Logo />
 
@@ -36,7 +36,7 @@ export default function PublicLayout() {
               <a
                 key={link.href}
                 href={link.href}
-                className="rounded-control text-sm font-semibold text-navy-600 transition hover:text-navy-900"
+                className="rounded-control text-sm font-semibold text-navy-600 transition hover:text-navy-900 dark:text-navy-300 dark:hover:text-white"
               >
                 {link.label}
               </a>
@@ -54,7 +54,7 @@ export default function PublicLayout() {
 
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-control text-navy-700 transition hover:bg-navy-100 sm:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-control text-navy-700 transition hover:bg-navy-100 dark:text-navy-200 dark:hover:bg-navy-800 sm:hidden"
             aria-expanded={menuOpen}
             aria-controls="public-mobile-menu"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
@@ -65,14 +65,14 @@ export default function PublicLayout() {
         </div>
 
         {menuOpen ? (
-          <div id="public-mobile-menu" className="border-t border-navy-100 bg-white px-4 py-4 sm:hidden">
+          <div id="public-mobile-menu" className="border-t border-navy-100 bg-white px-4 py-4 dark:border-navy-700 dark:bg-navy-900 sm:hidden">
             <nav aria-label="Mobile" className="flex flex-col gap-1">
               {NAV_LINKS.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
-                  className="rounded-control px-3 py-2.5 text-sm font-semibold text-navy-700 transition hover:bg-navy-50"
+                  className="rounded-control px-3 py-2.5 text-sm font-semibold text-navy-700 transition hover:bg-navy-50 dark:text-navy-200 dark:hover:bg-navy-800"
                 >
                   {link.label}
                 </a>
@@ -94,7 +94,7 @@ export default function PublicLayout() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-navy-100 bg-navy-900 text-navy-200">
+      <footer className="border-t border-navy-100 bg-navy-900 text-navy-200 dark:border-navy-800 dark:bg-navy-900">
         <div className="container-app grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <Logo to="/" variant="light" />
@@ -169,7 +169,7 @@ export default function PublicLayout() {
           </div>
         </div>
 
-        <div className="border-t border-navy-800">
+        <div className="border-t border-navy-800 dark:border-navy-800">
           <div className="container-app flex flex-col items-center justify-between gap-2 py-5 text-xs text-navy-400 sm:flex-row">
             <p>
               &copy; {new Date().getFullYear()} {APP_NAME}. All rights reserved.

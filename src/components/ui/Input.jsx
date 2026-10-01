@@ -3,18 +3,18 @@ import { Eye, EyeOff } from 'lucide-react';
 import clsx from 'clsx';
 
 const CONTROL_BASE =
-  'w-full rounded-control border border-navy-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 shadow-sm transition placeholder:text-navy-300 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:bg-navy-50 disabled:text-navy-400';
-const CONTROL_ERROR = 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/40';
+  'w-full rounded-control border border-navy-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 shadow-sm transition placeholder:text-navy-300 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:bg-navy-50 disabled:text-navy-400 dark:border-navy-600 dark:bg-navy-900 dark:text-navy-100 dark:placeholder:text-navy-500 dark:disabled:bg-navy-800 dark:disabled:text-navy-500';
+const CONTROL_ERROR = 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/40 dark:border-danger-500/60';
 
 /** Field wrapper: label, hint, error message and required marker. */
 export function Field({ label, htmlFor, hint, error, required, children, className }) {
   return (
     <div className={clsx('space-y-1.5', className)}>
       {label ? (
-        <label htmlFor={htmlFor} className="block text-sm font-semibold text-navy-800">
+        <label htmlFor={htmlFor} className="block text-sm font-semibold text-navy-800 dark:text-navy-100">
           {label}
           {required ? (
-            <span className="ml-0.5 text-danger-600" aria-hidden="true">
+            <span className="ml-0.5 text-danger-600 dark:text-danger-200" aria-hidden="true">
               *
             </span>
           ) : null}
@@ -22,11 +22,11 @@ export function Field({ label, htmlFor, hint, error, required, children, classNa
       ) : null}
       {children}
       {error ? (
-        <p id={htmlFor ? `${htmlFor}-error` : undefined} className="text-xs font-medium text-danger-600" role="alert">
+        <p id={htmlFor ? `${htmlFor}-error` : undefined} className="text-xs font-medium text-danger-600 dark:text-danger-200" role="alert">
           {error}
         </p>
       ) : hint ? (
-        <p id={htmlFor ? `${htmlFor}-hint` : undefined} className="text-xs text-navy-400">
+        <p id={htmlFor ? `${htmlFor}-hint` : undefined} className="text-xs text-navy-400 dark:text-navy-400">
           {hint}
         </p>
       ) : null}
@@ -122,7 +122,7 @@ export const PasswordInput = forwardRef(function PasswordInput(
         <button
           type="button"
           onClick={() => setVisible((current) => !current)}
-          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-control text-navy-400 transition hover:text-navy-700"
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-control text-navy-400 transition hover:text-navy-700 dark:hover:text-navy-100"
           aria-label={visible ? 'Hide password' : 'Show password'}
           aria-pressed={visible}
         >

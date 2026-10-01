@@ -1,6 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
+  // The theme is driven by `data-theme` on <html> (see ThemeContext), not the
+  // media query, so the toggle in the top bar is the single source of truth.
+  darkMode: ['class', '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
@@ -80,6 +83,11 @@ export default {
         card: '0 1px 2px rgba(16, 27, 45, 0.04), 0 4px 16px rgba(16, 27, 45, 0.06)',
         'card-hover': '0 2px 4px rgba(16, 27, 45, 0.06), 0 12px 28px rgba(16, 27, 45, 0.10)',
         pop: '0 10px 30px rgba(16, 27, 45, 0.18)',
+        // Dark surfaces need a deeper, blacker shadow - the light tokens are too
+        // faint to separate a card from the dark canvas.
+        'card-dark': '0 1px 2px rgba(0, 0, 0, 0.40), 0 4px 16px rgba(0, 0, 0, 0.30)',
+        'card-hover-dark': '0 2px 4px rgba(0, 0, 0, 0.45), 0 12px 28px rgba(0, 0, 0, 0.45)',
+        'pop-dark': '0 10px 30px rgba(0, 0, 0, 0.60)',
       },
       keyframes: {
         'fade-in': { from: { opacity: '0' }, to: { opacity: '1' } },

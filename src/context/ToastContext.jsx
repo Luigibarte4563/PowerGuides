@@ -6,29 +6,32 @@ const ToastContext = createContext(null);
 const TONE_STYLES = {
   success: {
     icon: CheckCircle2,
-    wrapper: 'border-success-200 bg-success-50',
-    iconColor: 'text-success-600',
-    titleColor: 'text-success-700',
+    wrapper:
+      'border-success-200 bg-success-50 dark:border-success-500/40 dark:bg-success-500/15',
+    iconColor: 'text-success-600 dark:text-success-200',
+    titleColor: 'text-success-700 dark:text-success-200',
   },
   error: {
     icon: XCircle,
-    wrapper: 'border-danger-200 bg-danger-50',
-    iconColor: 'text-danger-600',
-    titleColor: 'text-danger-700',
+    wrapper: 'border-danger-200 bg-danger-50 dark:border-danger-500/40 dark:bg-danger-500/15',
+    iconColor: 'text-danger-600 dark:text-danger-200',
+    titleColor: 'text-danger-700 dark:text-danger-200',
   },
   warning: {
     icon: TriangleAlert,
-    wrapper: 'border-warning-200 bg-warning-50',
-    iconColor: 'text-warning-600',
-    titleColor: 'text-warning-700',
+    wrapper:
+      'border-warning-200 bg-warning-50 dark:border-warning-500/40 dark:bg-warning-500/15',
+    iconColor: 'text-warning-600 dark:text-warning-200',
+    titleColor: 'text-warning-700 dark:text-warning-200',
   },
   info: {
     icon: Info,
-    wrapper: 'border-info-200 bg-info-50',
-    iconColor: 'text-info-600',
-    titleColor: 'text-info-700',
+    wrapper: 'border-info-200 bg-info-50 dark:border-info-500/40 dark:bg-info-500/15',
+    iconColor: 'text-info-600 dark:text-info-200',
+    titleColor: 'text-info-700 dark:text-info-200',
   },
 };
+
 
 /**
  * Lightweight toast provider: `useToast()` -> `{ success, error, warning, info }`.
@@ -97,19 +100,19 @@ function ToastViewport({ toasts, onDismiss }) {
             key={toast.id}
             role="status"
             aria-live={toast.tone === 'error' ? 'assertive' : 'polite'}
-            className={`pointer-events-auto flex w-full max-w-sm animate-toast-in items-start gap-3 rounded-card border p-4 shadow-pop ${style.wrapper}`}
+            className={`pointer-events-auto flex w-full max-w-sm animate-toast-in items-start gap-3 rounded-card border p-4 shadow-pop dark:shadow-pop-dark ${style.wrapper}`}
           >
             <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${style.iconColor}`} aria-hidden="true" />
             <div className="min-w-0 flex-1">
               {toast.title ? (
                 <p className={`text-sm font-semibold ${style.titleColor}`}>{toast.title}</p>
               ) : null}
-              <p className="text-sm text-navy-700">{toast.message}</p>
+              <p className="text-sm text-navy-700 dark:text-navy-100">{toast.message}</p>
             </div>
             <button
               type="button"
               onClick={() => onDismiss(toast.id)}
-              className="rounded-control p-1 text-navy-400 transition hover:bg-white/60 hover:text-navy-700"
+              className="rounded-control p-1 text-navy-400 transition hover:bg-white/60 hover:text-navy-700 dark:text-navy-300 dark:hover:bg-white/10 dark:hover:text-white"
               aria-label="Dismiss notification"
             >
               <X className="h-4 w-4" aria-hidden="true" />

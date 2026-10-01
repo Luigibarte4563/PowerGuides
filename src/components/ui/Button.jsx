@@ -12,15 +12,15 @@ import clsx from 'clsx';
  */
 const VARIANTS = {
   primary:
-    'bg-primary-500 text-navy-950 hover:bg-primary-400 active:bg-primary-600 disabled:bg-primary-200 disabled:text-navy-400',
+    'bg-primary-500 text-navy-950 hover:bg-primary-400 active:bg-primary-600 disabled:bg-primary-200 disabled:text-navy-400 dark:disabled:bg-primary-500/30 dark:disabled:text-navy-300',
   secondary:
-    'bg-navy-900 text-white hover:bg-navy-800 active:bg-navy-950 disabled:bg-navy-300',
+    'bg-navy-900 text-white hover:bg-navy-800 active:bg-navy-950 disabled:bg-navy-300 dark:bg-navy-100 dark:text-navy-900 dark:hover:bg-white dark:active:bg-navy-200 dark:disabled:bg-navy-700 dark:disabled:text-navy-500',
   outline:
-    'border border-navy-200 bg-white text-navy-800 hover:border-navy-300 hover:bg-navy-50 disabled:text-navy-300',
-  ghost: 'text-navy-700 hover:bg-navy-100 disabled:text-navy-300',
-  subtle: 'bg-navy-100 text-navy-800 hover:bg-navy-200 disabled:text-navy-400',
-  danger: 'bg-danger-600 text-white hover:bg-danger-700 active:bg-danger-700 disabled:bg-danger-200',
-  white: 'bg-white text-navy-900 hover:bg-navy-50 active:bg-navy-100 disabled:text-navy-300',
+    'border border-navy-200 bg-white text-navy-800 hover:border-navy-300 hover:bg-navy-50 disabled:text-navy-300 dark:border-navy-600 dark:bg-navy-800 dark:text-navy-100 dark:hover:border-navy-500 dark:hover:bg-navy-700 dark:disabled:text-navy-600',
+  ghost: 'text-navy-700 hover:bg-navy-100 disabled:text-navy-300 dark:text-navy-200 dark:hover:bg-navy-800 dark:disabled:text-navy-600',
+  subtle: 'bg-navy-100 text-navy-800 hover:bg-navy-200 disabled:text-navy-400 dark:bg-navy-700 dark:text-navy-100 dark:hover:bg-navy-600 dark:disabled:text-navy-500',
+  danger: 'bg-danger-600 text-white hover:bg-danger-700 active:bg-danger-700 disabled:bg-danger-200 dark:disabled:bg-danger-600/40 dark:disabled:text-navy-300',
+  white: 'bg-white text-navy-900 hover:bg-navy-50 active:bg-navy-100 disabled:text-navy-300 dark:bg-navy-100 dark:text-navy-900 dark:hover:bg-white dark:active:bg-navy-200 dark:disabled:bg-navy-700 dark:disabled:text-navy-500',
 };
 
 const SIZES = {
@@ -51,6 +51,9 @@ export const Button = forwardRef(function Button(
   const classes = clsx(
     'inline-flex items-center justify-center rounded-control font-semibold transition-colors',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
+    // Tailwind's default ring offset is white, which reads as a bright halo on a
+    // dark surface, so it is pinned to the canvas colour per theme.
+    'focus-visible:ring-offset-white dark:focus-visible:ring-offset-navy-950',
     'disabled:cursor-not-allowed',
     VARIANTS[variant] || VARIANTS.primary,
     SIZES[size] || SIZES.md,

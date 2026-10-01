@@ -41,7 +41,7 @@ export default function DashboardLayout() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="min-h-screen bg-canvas dark:bg-navy-950">
       <a href="#dashboard-content" className="skip-link">
         Skip to main content
       </a>

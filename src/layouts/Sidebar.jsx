@@ -45,7 +45,7 @@ export default function Sidebar({
       <aside
         id="sidebar-panel"
         className={clsx(
-          'fixed inset-y-0 left-0 z-[750] flex flex-col bg-navy-900 transition-[width,transform] duration-200 lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-[750] flex flex-col bg-navy-900 transition-[width,transform] duration-200 dark:bg-navy-900 lg:translate-x-0',
           collapsed ? 'w-[4.75rem]' : 'w-[17.5rem]',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
@@ -54,7 +54,7 @@ export default function Sidebar({
       >
         <div
           className={clsx(
-            'relative flex h-16 shrink-0 items-center border-b border-navy-800',
+            'relative flex h-16 shrink-0 items-center border-b border-navy-800 dark:border-navy-800',
             collapsed ? 'justify-center px-2' : 'justify-between px-4'
           )}
         >

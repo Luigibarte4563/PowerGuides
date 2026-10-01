@@ -16,7 +16,7 @@ export function LoadingState({ label = 'Loading…', className }) {
   return (
     <div className={clsx('flex flex-col items-center justify-center gap-3 px-4 py-12 text-center', className)}>
       <Loader2 className="h-8 w-8 animate-spin text-primary-500" aria-hidden="true" />
-      <p className="text-sm font-medium text-navy-500" role="status" aria-live="polite">
+      <p className="text-sm font-medium text-navy-500 dark:text-navy-400" role="status" aria-live="polite">
         {label}
       </p>
     </div>
@@ -25,14 +25,17 @@ export function LoadingState({ label = 'Loading…', className }) {
 
 /** Skeleton placeholder block used while lists load. */
 export function Skeleton({ className }) {
-  return <div className={clsx('animate-pulse rounded-control bg-navy-100', className)} aria-hidden="true" />;
+  return <div className={clsx('animate-pulse rounded-control bg-navy-100 dark:bg-navy-700', className)} aria-hidden="true" />;
 }
 
 export function SkeletonList({ rows = 3, className }) {
   return (
     <div className={clsx('space-y-3', className)} aria-hidden="true">
       {Array.from({ length: rows }).map((_, index) => (
-        <div key={index} className="rounded-card border border-navy-100 bg-white p-4 shadow-card">
+        <div
+          key={index}
+          className="rounded-card border border-navy-100 bg-white p-4 shadow-card dark:border-navy-700 dark:bg-navy-800 dark:shadow-card-dark"
+        >
           <Skeleton className="h-4 w-1/3" />
           <Skeleton className="mt-3 h-3 w-2/3" />
           <Skeleton className="mt-2 h-3 w-1/2" />
@@ -54,19 +57,19 @@ export function EmptyState({
   return (
     <div
       className={clsx(
-        'flex flex-col items-center justify-center rounded-card border border-dashed border-navy-200 bg-white/60 text-center',
+        'flex flex-col items-center justify-center rounded-card border border-dashed border-navy-200 bg-white/60 text-center dark:border-navy-600 dark:bg-navy-800/60',
         compact ? 'gap-2 px-4 py-8' : 'gap-3 px-6 py-14',
         className
       )}
     >
       {Icon ? (
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-primary-600">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-primary-600 dark:bg-primary-500/20 dark:text-primary-300">
           <Icon className="h-6 w-6" aria-hidden="true" />
         </span>
       ) : null}
       <div>
-        <p className="text-base font-bold text-navy-800">{title}</p>
-        {description ? <p className="mx-auto mt-1 max-w-md text-sm text-navy-500">{description}</p> : null}
+        <p className="text-base font-bold text-navy-800 dark:text-navy-100">{title}</p>
+        {description ? <p className="mx-auto mt-1 max-w-md text-sm text-navy-500 dark:text-navy-400">{description}</p> : null}
       </div>
       {action ? <div className="mt-1">{action}</div> : null}
     </div>
@@ -82,17 +85,17 @@ export function ErrorState({ message, onRetry, className, compact = false, title
     <div
       role="alert"
       className={clsx(
-        'flex flex-col items-center justify-center gap-3 rounded-card border border-danger-200 bg-danger-50 text-center',
+        'flex flex-col items-center justify-center gap-3 rounded-card border border-danger-200 bg-danger-50 text-center dark:border-danger-500/40 dark:bg-danger-500/15',
         compact ? 'px-4 py-6' : 'px-6 py-12',
         className
       )}
     >
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-danger-600">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-danger-600 dark:bg-navy-900 dark:text-danger-200">
         <AlertTriangle className="h-5 w-5" aria-hidden="true" />
       </span>
       <div>
-        <p className="text-base font-bold text-danger-700">{title}</p>
-        <p className="mx-auto mt-1 max-w-md text-sm text-navy-700">{message}</p>
+        <p className="text-base font-bold text-danger-700 dark:text-danger-200">{title}</p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-navy-700 dark:text-navy-200">{message}</p>
       </div>
       {onRetry ? (
         <Button variant="outline" size="sm" icon={RefreshCw} onClick={onRetry}>

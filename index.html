@@ -16,6 +16,29 @@
       rel="stylesheet"
     />
     <title>PowerGuide Dagupan | Report &amp; Track Power Outages</title>
+    <script>
+      /*
+       * Resolve the theme before first paint, otherwise a dark-mode reload shows
+       * a white flash while React boots. Must stay in sync with the STORAGE_KEY
+       * and the prefers-color-scheme fallback in src/context/ThemeContext.jsx.
+       */
+      (function () {
+        try {
+          var stored = localStorage.getItem('powerguide.theme');
+          var theme =
+            stored === 'dark' || stored === 'light'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          document.documentElement.dataset.theme = theme;
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', theme === 'dark' ? '#0B1524' : '#F6F7F9');
+        } catch (error) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
