@@ -137,6 +137,18 @@ const ROLE_GATED_PATHS = new Set([
   '/api/maintenance/get_complete.php',
   '/api/notification/create.php',
   '/api/cluster/store.php',
+  /*
+   * The assignment endpoints are on a strict `requireRole` allow-list and every one of
+   * their 403s is a role problem - the business-rule failures they also return are 400
+   * (bad id, non-lineman target) or 409 (duplicate), never 403. So a 403 here can only
+   * mean the token no longer matches the account, and `outage/get.php` being gated
+   * already covers the lineman-scope 403s the outage endpoints now return.
+   */
+  '/api/lineman_assignment/get.php',
+  '/api/lineman_assignment/linemen.php',
+  '/api/lineman_assignment/create.php',
+  '/api/lineman_assignment/update.php',
+  '/api/lineman_assignment/delete.php',
 ]);
 
 let onForbidden = null;

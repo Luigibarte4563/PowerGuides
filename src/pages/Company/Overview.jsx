@@ -1,13 +1,20 @@
 import { Link } from 'react-router-dom';
 import {
+  AlertTriangle,
+  ArrowRight,
   Bell,
   CheckCircle2,
   CircleDot,
+  Flame,
+  Layers,
   Plug,
+  RefreshCw,
+  Search,
+  ShieldAlert,
+  UserCheck,
+  Waves,
   Wrench,
   Zap,
-  ArrowRight,
-  RefreshCw,
 } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
 import Badge from '@/components/ui/Badge';
@@ -29,16 +36,36 @@ const RECENT_LIMIT = 8;
 /**
  * Module DASH - company dashboard home.
  *
- * The four summary cards come from count-only endpoints (`outage_report/get_active`,
- * `outage_report/get_resolve`, `maintenance/get_upcoming`, `power_station/get_available`)
- * and auto-refresh every 60 seconds (FR-DASH-4). Recent activity is the staff outage
- * list trimmed to the newest rows (FR-DASH-2) - the same endpoint the Outages page
- * uses, so a status change made there shows up here on the next refetch.
+ * Every figure comes from the API; nothing here is computed from a cached list or a
+ * hardcoded list. They are grouped into sections rather than one long grid, because the
+ * cards do not all mean the same kind of thing:
+ *
+ *   Outage reports  what needs attention right now, split by status
+ *   Field crew      lineman coverage (managers only)
+ *   Hazards & floods community safety reports
+ *   Assets          power stations and computed outage clusters
+ *
+ * Two subtleties worth knowing:
+ *
+ *  - `activeOutages` is `get_active.php`, which counts `status != 'rejected' AND
+ *    is_active = 1` - i.e. every open report, not just the ones whose status is literally
+ *    `active`. `totalOutages` comes from the company list instead. They therefore need not
+ *    add up, and the labels say so.
+ *  - Every outage figure is scoped server-side to the caller's assignments, so a lineman
+ *    sees counts for their own barangays rather than city-wide totals. `electric_company`
+ *    and `admin` see the whole city, unchanged.
+ *
+ * A failed count degrades to a dash on its own card (`isPartial`), and each figure is
+ * requested independently, so one endpoint being unavailable never blanks the page.
  */
 export default function Overview() {
-  const { user, role } = useAuth();
+  const { user, role, isManager } = useAuth();
   const { roles } = useReference();
-  const { summary, isLoading, isFetching, isPartial, refetch, isError } = useCompanySummary();
+  const { summary, isLoading, isFetching, isPartial, refetch, isError } = useCompanySummary({
+    // `get_complete` and the assignment endpoints are manager-only; skipping them keeps a
+    // lineman from firing requests that are certain to 403.
+    includeManagerCounts: isManager,
+  });
   const { unreadCount } = useNotifications();
 
   const recentQuery = useCompanyOutageList({ scope: 'scoped' }, { staleTime: 30 * 1000 });
@@ -52,17 +79,33 @@ export default function Overview() {
    *
    * `useCompanySummary` wraps every figure as `{ count, failed }` so a single failed
    * endpoint can degrade to a dash instead of blanking the row. Passing the wrapper
-   * straight through made `formatCount` do `Number({ count: 3 })`, which is NaN - so all
-   * four cards rendered the string "NaN". `Profile.jsx` already unwrapped it correctly.
+   * straight through made `formatCount` do `Number({ count: 3 })`, which is NaN - so the
+   * cards rendered the string "NaN".
    */
-  const cards = [
+  const outageCards = [
     {
       label: 'Active outage reports',
       value: summary?.activeOutages?.count,
       icon: Zap,
       tone: 'danger',
       to: '/company/outages?status=active',
-      hint: 'Not yet resolved',
+      hint: 'Open right now',
+    },
+    {
+      label: 'Awaiting review',
+      value: summary?.underReviewOutages?.count,
+      icon: Search,
+      tone: 'warning',
+      to: '/company/outages?status=under_review',
+      hint: 'Not yet verified',
+    },
+    {
+      label: 'Verified reports',
+      value: summary?.verifiedOutages?.count,
+      icon: CheckCircle2,
+      tone: 'info',
+      to: '/company/outages?status=verified',
+      hint: 'Confirmed by staff',
     },
     {
       label: 'Resolved reports',
@@ -73,6 +116,87 @@ export default function Overview() {
       hint: 'All time',
     },
     {
+      label: 'All outage reports',
+      value: summary?.totalOutages?.count,
+      icon: Layers,
+      tone: 'navy',
+      to: '/company/outages',
+      hint: 'Every status combined',
+    },
+    {
+      label: 'Reported in 7 days',
+      value: summary?.recentHeatmapReports?.count,
+      icon: Flame,
+      tone: 'danger',
+      to: '/company/map',
+      hint: 'From the heatmap window',
+    },
+  ];
+
+  const crewCards = [
+    {
+      label: 'Active assignments',
+      value: summary?.activeAssignments?.count,
+      icon: UserCheck,
+      tone: 'primary',
+      to: '/company/assignments',
+      hint: 'Linemen currently covering a barangay',
+    },
+    {
+      label: 'All assignments',
+      value: summary?.totalAssignments?.count,
+      icon: Layers,
+      tone: 'navy',
+      to: '/company/assignments',
+      hint: 'Active and deactivated',
+    },
+  ];
+
+  const safetyCards = [
+    {
+      label: 'Open hazards',
+      value: summary?.openHazards?.count,
+      icon: AlertTriangle,
+      tone: 'danger',
+      to: '/company/hazards',
+      hint: 'Reported, awaiting review',
+    },
+    {
+      label: 'Verified hazards',
+      value: summary?.verifiedHazards?.count,
+      icon: ShieldAlert,
+      tone: 'warning',
+      to: '/company/hazards',
+      hint: 'Confirmed by staff',
+    },
+    {
+      label: 'Open flood reports',
+      value: summary?.openFloods?.count,
+      icon: Waves,
+      tone: 'info',
+      to: '/company/map',
+      hint: 'Reported, awaiting review',
+    },
+  ];
+
+  const assetCards = [
+    {
+      label: 'Available power stations',
+      value: summary?.availableStations?.count,
+      icon: Plug,
+      tone: 'success',
+      to: '/company/power-stations',
+      hint: 'Open to the public',
+    },
+    {
+      label: 'Active clusters',
+      value: summary?.activeClusters?.count,
+      icon: CircleDot,
+      tone: 'primary',
+      to: '/company/map',
+      hint: 'Computed outage groupings',
+    },
+    {
       label: 'Upcoming maintenance',
       value: summary?.upcomingMaintenance?.count,
       icon: Wrench,
@@ -81,12 +205,12 @@ export default function Overview() {
       hint: 'Upcoming and ongoing',
     },
     {
-      label: 'Available power stations',
-      value: summary?.availableStations?.count,
-      icon: Plug,
-      tone: 'info',
-      to: '/company/power-stations',
-      hint: 'Open to the public',
+      label: 'Completed maintenance',
+      value: summary?.completedMaintenance?.count,
+      icon: CheckCircle2,
+      tone: 'neutral',
+      to: '/company/maintenance',
+      hint: 'Finished work, all time',
     },
   ];
 
@@ -119,19 +243,39 @@ export default function Overview() {
         </InfoNote>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {cards.map((card) => (
-          <StatCard
-            key={card.label}
-            label={card.label}
-            value={formatCount(card.value, isLoading)}
-            hint={card.hint}
-            icon={card.icon}
-            tone={card.tone}
-            to={card.to}
-          />
-        ))}
-      </div>
+      <CardSection
+        title="Outage reports"
+        description={
+          isManager
+            ? 'City-wide. Open means not rejected and still active.'
+            : 'Limited to the barangays assigned to you.'
+        }
+        cards={outageCards}
+        isLoading={isLoading}
+      />
+
+      {isManager ? (
+        <CardSection
+          title="Field crew"
+          description="Who is covering which barangay."
+          cards={crewCards}
+          isLoading={isLoading}
+        />
+      ) : null}
+
+      <CardSection
+        title="Hazards & floods"
+        description="Community safety reports needing attention."
+        cards={safetyCards}
+        isLoading={isLoading}
+      />
+
+      <CardSection
+        title="Assets & maintenance"
+        description="Infrastructure available to residents and work already scheduled."
+        cards={assetCards}
+        isLoading={isLoading}
+      />
 
       {/* `minmax(0, …)` rather than a bare `1.4fr`.
           Tailwind turns `1.4fr` into `grid-template-columns: 1.4fr 1fr`, and in CSS Grid a
@@ -233,6 +377,14 @@ export default function Overview() {
                 title="Plan maintenance"
                 text="Schedule work per barangay and notify affected residents."
               />
+              {isManager ? (
+                <QuickAction
+                  to="/company/assignments"
+                  icon={UserCheck}
+                  title="Assign linemen"
+                  text="Post field linemen to the barangays they cover."
+                />
+              ) : null}
               <QuickAction
                 to="/company/map"
                 icon={CircleDot}
@@ -273,6 +425,36 @@ export default function Overview() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * A titled group of stat cards.
+ *
+ * Each card reads its own figure out of `summary`, so a card whose endpoint failed shows a
+ * dash while its neighbours stay correct.
+ */
+function CardSection({ title, description, cards, isLoading }) {
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-navy-500">{title}</h2>
+        <p className="text-xs text-navy-400">{description}</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        {cards.map((card) => (
+          <StatCard
+            key={card.label}
+            label={card.label}
+            value={formatCount(card.value, isLoading)}
+            hint={card.hint}
+            icon={card.icon}
+            tone={card.tone}
+            to={card.to}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 

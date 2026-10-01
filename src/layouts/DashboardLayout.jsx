@@ -3,6 +3,8 @@ import { Outlet, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import { useAuth } from '@/context/AuthContext';
+import { navItemsForRole } from '@/routes/navItems';
 
 /** Persisted so the sidebar width survives a reload. */
 const COLLAPSED_KEY = 'powerguide.sidebar.collapsed';
@@ -17,6 +19,7 @@ function readCollapsed() {
 
 /** Dashboard chrome: persistent sidebar + top bar with the routed page inside. */
 export default function DashboardLayout() {
+  const { role } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Icon-only rail on desktop. Never collapsed on mobile - there the sidebar is a
   // temporary drawer, so a collapsed rail would hide the labels with no room for
@@ -51,6 +54,7 @@ export default function DashboardLayout() {
         onClose={() => setSidebarOpen(false)}
         collapsed={collapsed}
         onToggleCollapsed={toggleCollapsed}
+        items={navItemsForRole(role)}
       />
 
       {/* Reserve room for the rail: the sidebar is fixed, so the content has to

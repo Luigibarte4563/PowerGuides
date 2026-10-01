@@ -8,6 +8,7 @@ import {
   Plug,
   ShieldAlert,
   Timer,
+  UserCheck,
   Waves,
   Wrench,
   Zap,
@@ -16,9 +17,20 @@ import {
 /**
  * Single source of truth for dashboard navigation.
  * Used by the sidebar, the top-bar page title and the breadcrumb helper.
+ *
+ * An item may carry `roles` to limit it to specific roles; `DashboardLayout` filters on
+ * it. Without one, the item is shown to everyone. Hiding an item is a convenience only -
+ * the route itself and the API behind it do the real checking.
  */
 export const DASHBOARD_NAV = [
   { to: '/dashboard', label: 'Overview', icon: LayoutDashboard, end: true, group: 'Monitor' },
+  {
+    to: '/dashboard/assignments',
+    label: 'My Assigned Barangays',
+    icon: UserCheck,
+    group: 'Monitor',
+    roles: ['lineman'],
+  },
   { to: '/dashboard/outages', label: 'Outage Reports', icon: Zap, group: 'Report' },
   { to: '/dashboard/floods', label: 'Flood Reports', icon: Waves, group: 'Report' },
   { to: '/dashboard/hazards', label: 'Electrical Hazards', icon: AlertTriangle, group: 'Report' },
@@ -44,4 +56,17 @@ export function findNavItem(pathname) {
       .find((item) => pathname.startsWith(item.to)) ||
     null
   );
+}
+
+/**
+ * The nav items this role should see.
+ *
+ * Used by `DashboardLayout` to hand a filtered list to the sidebar. `findNavItem` stays
+ * unfiltered so a hidden deep link still resolves to a title instead of "Unknown page" -
+ * the route guard is what decides whether the page renders.
+ */
+export function navItemsForRole(role) {
+  const key = String(role ?? '').trim().toLowerCase();
+  if (!key) return DASHBOARD_NAV;
+  return DASHBOARD_NAV.filter((item) => !item.roles || item.roles.includes(key));
 }

@@ -18,6 +18,11 @@
  *
  * Note the asymmetry: `notification/create.php` is the one endpoint a lineman cannot
  * call, so the compose UI is gated on MANAGER_ROLES and not on STAFF_ROLES.
+ *
+ * Lineman assignments (`lineman_assignment/*`) split the same way: managing them is
+ * MANAGER_ROLES only, while `my.php` is lineman-only. A lineman's OUTAGE access is also
+ * narrower than the rest of STAFF_ROLES - the backend limits them to their actively
+ * assigned barangays, which is a server-side rule these lists cannot express.
  */
 
 export const ROLE = {
@@ -30,8 +35,11 @@ export const ROLE = {
 /** Can review/verify reports, add field updates and manage hazards. */
 export const STAFF_ROLES = [ROLE.LINEMAN, ROLE.ELECTRIC_COMPANY, ROLE.ADMIN];
 
-/** Can plan maintenance, broadcast notifications and run bulk status changes. */
+/** Can plan maintenance, broadcast notifications, run bulk changes and assign linemen. */
 export const MANAGER_ROLES = [ROLE.ELECTRIC_COMPANY, ROLE.ADMIN];
+
+/** Can read and manage lineman <-> barangay assignments. Same set as MANAGER_ROLES. */
+export const ASSIGNMENT_MANAGER_ROLES = MANAGER_ROLES;
 
 /** Display labels used when `reference/get.php` has not loaded yet. */
 export const ROLE_LABELS = {

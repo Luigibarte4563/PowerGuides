@@ -27,10 +27,12 @@ import RiskAreas from '@/pages/Dashboard/RiskAreas';
 import Heatmap from '@/pages/Dashboard/Heatmap';
 import Profile from '@/pages/Dashboard/Profile';
 
+import MyAssignments from '@/pages/Dashboard/MyAssignments';
 import CompanyOverview from '@/pages/Company/Overview';
 import CompanyOutages from '@/pages/Company/Outages';
 import CompanyOutageDetail from '@/pages/Company/OutageDetail';
 import CompanyMaintenance from '@/pages/Company/Maintenance';
+import CompanyAssignments from '@/pages/Company/Assignments';
 import CompanyMapRisk from '@/pages/Company/MapRisk';
 import CompanyPowerStations from '@/pages/Company/PowerStations';
 import CompanyNotifications from '@/pages/Company/Notifications';
@@ -68,6 +70,7 @@ export default function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Overview />} />
+          <Route path="assignments" element={<MyAssignments />} />
           <Route path="outages" element={<Outages />} />
           <Route path="outages/:id" element={<OutageDetail />} />
           <Route path="maintenance" element={<Maintenance />} />
@@ -90,6 +93,7 @@ export default function AppRoutes() {
             <Route index element={<CompanyOverview />} />
             <Route path="outages" element={<CompanyOutages />} />
             <Route path="outages/:id" element={<CompanyOutageDetail />} />
+            <Route path="assignments" element={<CompanyAssignments />} />
             <Route path="maintenance" element={<CompanyMaintenance />} />
             <Route path="map" element={<CompanyMapRisk />} />
             <Route path="power-stations" element={<CompanyPowerStations />} />

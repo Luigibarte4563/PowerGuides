@@ -5,6 +5,7 @@ import {
   Map as MapIcon,
   Plug,
   User,
+  UserCheck,
   Wrench,
   Zap,
 } from 'lucide-react';
@@ -20,6 +21,7 @@ export const COMPANY_NAV = [
   { to: '/company', label: 'Dashboard', icon: LayoutDashboard, end: true, group: 'Monitor' },
   { to: '/company/outages', label: 'Outage Reports', icon: Zap, group: 'Respond' },
   { to: '/company/hazards', label: 'Hazard Review', icon: AlertTriangle, group: 'Respond' },
+  { to: '/company/assignments', label: 'Lineman Assignments', icon: UserCheck, group: 'Plan' },
   { to: '/company/maintenance', label: 'Maintenance', icon: Wrench, group: 'Plan' },
   { to: '/company/map', label: 'Map & Risk', icon: MapIcon, group: 'Plan' },
   { to: '/company/power-stations', label: 'Power Stations', icon: Plug, group: 'Assets' },

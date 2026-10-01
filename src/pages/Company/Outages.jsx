@@ -29,6 +29,7 @@ import { useReference } from '@/context/ReferenceContext';
 import { useToast } from '@/context/ToastContext';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useCompanyOutageList } from '@/hooks/useCompanyOutages';
+import { useMyAssignments } from '@/hooks/useLinemanAssignments';
 import { companyOutagesApi, MANAGEABLE_STATUSES } from '@/api';
 import { COMPANY_PAGE_SIZE, COMPANY_QUERY_KEYS, severityTone, statusTone } from '@/utils/constants';
 import { readCompanyOutage } from '@/utils/records';
@@ -64,7 +65,7 @@ const SEVERITY_RANK = { critical: 0, high: 1, moderate: 2, medium: 2, low: 3, mi
  * client can see, and the server's own `affected` is reported back after saving.
  */
 export default function Outages() {
-  const { isManager } = useAuth();
+  const { isManager, role, isStaff } = useAuth();
   const { statuses, severityLevels, outageCategories, barangays, isLoading: refLoading } = useReference();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -75,6 +76,7 @@ export default function Outages() {
   const [severity, setSeverity] = useState('');
   const [category, setCategory] = useState('');
   const [barangay, setBarangay] = useState('');
+  const [assignedBarangay, setAssignedBarangay] = useState('');
   const [search, setSearch] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -85,6 +87,26 @@ export default function Outages() {
   const debouncedSearch = useDebouncedValue(search);
 
   const isRaw = scope === 'raw';
+
+  /*
+   * A lineman's scope is set by the BACKEND: both endpoints below already exclude any
+   * report in a barangay they are not actively assigned to, so nothing here can widen it.
+   *
+   * This dropdown is only a convenience over that already-filtered list - it narrows to
+   * one of their own assigned barangays, never to another. It reads the same `my.php`
+   * rows the server scopes with, so the two cannot disagree. Managers and admins skip
+   * the query entirely (`my.php` would answer 403 for them).
+   */
+  const isLineman = role === 'lineman' && isStaff;
+  const myAssignmentsQuery = useMyAssignments({ enabled: isLineman });
+  const assignedBarangays = useMemo(
+    () =>
+      (myAssignmentsQuery.data || []).map((assignment) => ({
+        value: String(assignment.barangayId),
+        label: assignment.barangayName,
+      })),
+    [myAssignmentsQuery.data]
+  );
 
   // Keep the status filter in the URL so an Overview summary card can deep-link here.
   useEffect(() => {
@@ -99,7 +121,7 @@ export default function Outages() {
   // Any filter change invalidates the current page number.
   useEffect(() => {
     setPage(1);
-  }, [scope, status, severity, category, barangay, debouncedSearch, fromDate, toDate, sort]);
+  }, [scope, status, severity, category, barangay, assignedBarangay, debouncedSearch, fromDate, toDate, sort]);
 
   const listQuery = useCompanyOutageList({
     scope,
@@ -118,6 +140,11 @@ export default function Outages() {
     const to = toDate ? new Date(`${toDate}T23:59:59`).getTime() : null;
 
     const matches = rows.filter((row) => {
+      // Convenience filter over the already-scoped rows. `outage/get.php` takes a
+      // barangay NAME and only on the raw tab, and the company endpoint takes none at
+      // all, so this matches on the row's own barangay id - which the API now returns.
+      if (assignedBarangay && String(row.barangayId) !== assignedBarangay) return false;
+
       if (term) {
         const haystack = [row.locationName, row.barangay, row.description, row.category, row.reportKey, row.reporter]
           .filter(Boolean)
@@ -147,7 +174,7 @@ export default function Outages() {
       sorted.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     }
     return sorted;
-  }, [rows, debouncedSearch, fromDate, toDate, sort]);
+  }, [rows, debouncedSearch, fromDate, toDate, sort, assignedBarangay]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / COMPANY_PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * COMPANY_PAGE_SIZE, page * COMPANY_PAGE_SIZE);
@@ -180,6 +207,7 @@ export default function Outages() {
     setSeverity('');
     setCategory('');
     setBarangay('');
+    setAssignedBarangay('');
     setSearch('');
     setFromDate('');
     setToDate('');
@@ -187,7 +215,15 @@ export default function Outages() {
   };
 
   const anyFilter =
-    status || severity || category || barangay || search || fromDate || toDate || sort !== 'newest';
+    status ||
+    severity ||
+    category ||
+    barangay ||
+    assignedBarangay ||
+    search ||
+    fromDate ||
+    toDate ||
+    sort !== 'newest';
 
   return (
     <div className="space-y-6">
@@ -257,6 +293,21 @@ export default function Outages() {
               value={barangay}
               onChange={(event) => setBarangay(event.target.value)}
               loading={refLoading}
+            />
+          ) : null}
+          {isLineman ? (
+            <Select
+              label="My assigned barangays"
+              options={assignedBarangays}
+              placeholder="All my assigned barangays"
+              value={assignedBarangay}
+              onChange={(event) => setAssignedBarangay(event.target.value)}
+              loading={myAssignmentsQuery.isLoading}
+              hint={
+                myAssignmentsQuery.isError
+                  ? 'Your assignments could not be loaded, but the list below is still limited by the server.'
+                  : 'The server already limits this list to your assigned barangays.'
+              }
             />
           ) : null}
           <Input

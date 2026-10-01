@@ -26,3 +26,11 @@ export { floodsApi, FLOOD_LEVELS } from './floods';
 export { hazardsApi, HAZARD_SEVERITIES, HAZARD_STATUSES } from './hazards';
 export { getNearbyRisks } from './risk';
 export { heatmapApi, CLUSTER_FORECAST_LEVELS } from './heatmap';
+export {
+  linemanAssignmentsApi,
+  readAssignment,
+  readMyAssignment,
+  isActiveAssignment,
+  ACTIVE_ASSIGNMENT_STATUS,
+  INACTIVE_ASSIGNMENT_STATUS,
+} from './linemanAssignments';

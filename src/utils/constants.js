@@ -199,6 +199,15 @@ export const COMPANY_QUERY_KEYS = {
   myStations: ['company-power-stations', 'mine'],
   hazards: (params) => ['company-hazards', params],
   clusters: (params) => ['company-clusters', params],
+  /*
+   * Every assignment query shares the `lineman-assignments` prefix so one invalidation
+   * after a create / update / deactivate refreshes the table, the lineman picker and a
+   * lineman's own assigned barangays together - the outage list a lineman sees depends on
+   * these rows, so leaving a cache stale would show outages they can no longer open.
+   */
+  linemanAssignments: (params) => ['lineman-assignments', 'all', params],
+  linemen: ['lineman-assignments', 'linemen'],
+  myAssignments: ['lineman-assignments', 'mine'],
 };
 
 /** Page size for the client-side tables (the staff endpoints return every row). */
