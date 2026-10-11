@@ -20,11 +20,18 @@ writing `users.role_id` in the database.
 
 - Node.js 18+ (tested on Node 20)
 - npm 9+
-- A running XAMPP/Apache instance serving the PHP API at `http://localhost/CrowdsourcedAPI`
+- The PHP API ([`CrowdsourcedAPI`](https://github.com/Luigibarte4563/CrowdsourcedAPI)), a
+  **separate repository**, served by XAMPP/Apache at `http://localhost/CrowdsourcedAPI`
+- A running MySQL/MariaDB server for that API
 - The `lineman_assignments` table (see **Lineman assignments** below; without it the `/company`
   assignment screens and a lineman's assigned scopes will not work)
 
 ## 2. Setup
+
+> **Setting up a machine that has never run this project?** Read
+> **[`SETUP.md`](SETUP.md)** first — it walks through both repositories (this one
+> and the PHP API), the database import, the `.env` files and CORS. The summary
+> below assumes the API is already running.
 
 ```bash
 cd frontend
@@ -43,25 +50,27 @@ rather than silently moving ports). Open that URL in your browser.
 | `npm run preview` | Serve the production build locally             |
 | `npm run lint`    | ESLint over `src/`                             |
 
-### Environment variable
+### Environment variables
 
-| Variable              | Default                            | Purpose                          |
-| --------------------- | ---------------------------------- | -------------------------------- |
-| `VITE_API_BASE_URL`   | `http://localhost/CrowdsourcedAPI` | Base URL of the PHP API          |
+| Variable            | Default                 | Read by             | Purpose                                                     |
+| ------------------- | ----------------------- | ------------------- | ----------------------------------------------------------- |
+| `VITE_API_BASE_URL` | `/CrowdsourcedAPI`      | `src/api/client.js` | Base URL of the PHP API. Relative = proxied, same-origin   |
+| `API_PROXY_TARGET`  | `http://localhost`      | `vite.config.js`    | Where the dev proxy forwards to. Change if Apache is elsewhere |
 
-Only the base URL is configurable; **every request goes through the single client in
+`.env` is gitignored, so a fresh clone has to make its own copy of `.env.example` — which is
+already set up for the proxy, so nothing needs editing on a normal machine.
+
+Only these are configurable; **every request goes through the single client in
 `src/api/client.js`**, which adds credentials (`credentials: 'include'`, plus an optional bearer
 token if the API returns one), query-string building, timeouts, cancellation and error
 normalisation.
 
-### Local development: the dev proxy (recommended)
+### Local development: the dev proxy (the default)
 
-The PHP API only returns `Access-Control-Allow-Origin` for `localhost:5173` and `5174`
-(`config/cors.php`). The dev server is pinned to **5174**, which the API does allow — but relying
-on CORS still breaks if the port ever shifts.
-
-To avoid that entirely, `vite.config.js` proxies `/CrowdsourcedAPI` to Apache and `.env` uses a
-relative base URL, so every API call is same-origin and the session cookie always works:
+`VITE_API_BASE_URL=/CrowdsourcedAPI` is a **relative** path, and `vite.config.js`
+proxies `/CrowdsourcedAPI` to Apache. The browser therefore only ever talks to
+one origin, so **CORS is not involved at all** and the `jwt_token` session cookie
+always works — on localhost, on 127.0.0.1, and on a LAN IP alike.
 
 ```
 # vite.config.js
@@ -71,10 +80,40 @@ server: { proxy: { '/CrowdsourcedAPI': { target: 'http://localhost' } } }
 VITE_API_BASE_URL=/CrowdsourcedAPI
 ```
 
-If you prefer the absolute URL (or you are building for a same-origin deployment), switch
-`VITE_API_BASE_URL` in `.env` back to `http://localhost/CrowdsourcedAPI` — and note that
-`FRONTEND_URL` in the **backend** `.env` must then also match this app's origin (5174) or the
-Google OAuth redirect lands on the wrong app.
+If Apache is not on this machine's `localhost:80`, set `API_PROXY_TARGET` in
+`.env` (it is read by `vite.config.js`, not by the app).
+
+This is also why the pinned port is a non-issue for CORS: even if the dev server
+were reached on a different host or port, there is no cross-origin request to
+reject. The pin itself is still required for Google OAuth — see **Google
+sign-in** below.
+
+### If you switch to the absolute URL
+
+Setting `VITE_API_BASE_URL=http://localhost/CrowdsourcedAPI` bypasses the proxy
+and makes every request cross-origin (different port), which brings the API's
+allow-list back into play. That file lives in the **other** repository:
+
+```
+CrowdsourcedAPI/config/cors.php   # the only place Access-Control-* is set
+```
+
+It matches `Origin` against an exact list — `localhost:5173` / `localhost:5174`
+plus their `127.0.0.1` equivalents by default — and sends **no**
+`Access-Control-Allow-Origin` header on a miss. Override the list with
+`ALLOWED_ORIGINS` in `CrowdsourcedAPI/.env` (comma separated, replaces the
+defaults) if you need another origin, e.g. a LAN address.
+
+Two things that do **not** work, and are the usual time sink:
+
+- **`Access-Control-Allow-Origin: *` is not valid here.** The session is an
+  httpOnly cookie sent with `credentials: 'include'`, which the spec requires to
+  be matched by one exact origin.
+- **`FRONTEND_URL` has nothing to do with CORS.** In `CrowdsourcedAPI/.env` it is
+  the Google OAuth redirect target only.
+
+`FRONTEND_URL` in the **backend** `.env` must match this app's origin (5174) or
+the Google OAuth redirect lands on the wrong app either way.
 
 ## 3. Folder layout
 
@@ -85,6 +124,7 @@ frontend/                     # project root (this folder)
 ├── tailwind.config.js        # design tokens (colours, radii, shadows, animation)
 ├── postcss.config.js
 ├── .env.example
+├── SETUP.md                   # from-scratch install guide for both repos, incl. CORS
 ├── public/
 │   └── favicon.svg
 └── src/
@@ -266,6 +306,19 @@ blank page or the wrong app, check that value first.
 | Risk areas | `risk/get_nearby` |
 | Heatmap / clusters | `heatmap/get`, `cluster/get`, `cluster/store` (staff) |
 
+### Coordinate model (barangay-sourced)
+
+Every report, hazard, flood, power station and saved location is placed on the
+map by its **barangay's stored centroid**. The `barangays` table holds
+`latitude`/`longitude` (filled by the backend's `database/fill_barangay_coordinates.php`
+and baked into `database/003_barangay_coordinates.sql`). The form shows a
+barangay dropdown (required); selecting one drops the map pin on that centroid.
+The user may drag the pin to refine the point. The free-text `Location name`
+field is only a label shown to others; it is **never geocoded**.
+
+A barangay with NULL coordinates is rejected by the API with **503**; the form
+will show an error listing the affected barangays before the user submits.
+
 ## 6. Design system
 
 Tokens live in `tailwind.config.js` and are used consistently on every page:
@@ -392,7 +445,10 @@ Two things worth knowing when working on this module:
 
 ## 10. Out of scope
 
-- The `/backend` folder (the PHP API lives in `C:\xampp\htdocs\CrowdsourcedAPI`)
+- The `/backend` folder — the PHP API is a **separate repository**
+  ([`CrowdsourcedAPI`](https://github.com/Luigibarte4563/CrowdsourcedAPI)), cloned to
+  `C:\xampp\htdocs\CrowdsourcedAPI`. That repo also owns `config/cors.php` and both `.env`
+  files. See [`SETUP.md`](SETUP.md)
 - Role management — there is no endpoint for it, so roles are changed in the database
 - Any audience/broadcast targeting: `notification/create.php` takes explicit `user_id`s, so
   "notify a whole barangay" has to be resolved to ids client-side

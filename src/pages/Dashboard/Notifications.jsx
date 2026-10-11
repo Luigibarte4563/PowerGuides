@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, BellOff, CheckCheck, CheckCircle2 } from 'lucide-react';
+import { Bell, BellOff, CheckCheck, CheckCircle2, RefreshCw } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
 import Tabs from '@/components/ui/Tabs';
 import { Button } from '@/components/ui/Button';
@@ -32,7 +32,7 @@ const TYPE_TONES = {
 export default function Notifications() {
   const [tab, setTab] = useState('all');
   const toast = useToast();
-  const { notifications, unreadCount, isLoading, isError, error, refetch } = useNotifications({ limit: 100 });
+  const { notifications, unreadCount, isLoading, isFetching, isError, error, refetch } = useNotifications({ limit: 100 });
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
 
@@ -53,15 +53,25 @@ export default function Notifications() {
         title="Notifications"
         description="Updates about outages, maintenance, hazards and your own reports."
         actions={
-          <Button
-            variant="outline"
-            icon={CheckCheck}
-            onClick={handleMarkAll}
-            loading={markAllAsRead.isPending}
-            disabled={unreadCount === 0}
-          >
-            Mark all as read
-          </Button>
+          <>
+            <Button
+              variant="ghost"
+              icon={RefreshCw}
+              loading={isFetching}
+              onClick={() => refetch()}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="outline"
+              icon={CheckCheck}
+              onClick={handleMarkAll}
+              loading={markAllAsRead.isPending}
+              disabled={unreadCount === 0}
+            >
+              Mark all as read
+            </Button>
+          </>
         }
       />
 

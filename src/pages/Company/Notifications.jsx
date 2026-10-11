@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, CheckCheck, Inbox, MailOpen, Send } from 'lucide-react';
+import { Bell, CheckCheck, Inbox, MailOpen, RefreshCw, Send } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
 import Tabs from '@/components/ui/Tabs';
 import Badge from '@/components/ui/Badge';
@@ -34,7 +34,7 @@ const TABS = [
 export default function Notifications() {
   const { isManager } = useAuth();
   const { notificationTypes } = useReference();
-  const { notifications, unreadCount, isLoading, isError, refetch } = useNotifications({ limit: 50 });
+  const { notifications, unreadCount, isLoading, isFetching, isError, refetch } = useNotifications({ limit: 50 });
   const markAsRead = useMarkAsRead();
   const markAll = useMarkAllAsRead();
 
@@ -56,6 +56,14 @@ export default function Notifications() {
         description="Your inbox, and the broadcast composer for resident updates."
         actions={
           <>
+            <Button
+              variant="ghost"
+              icon={RefreshCw}
+              loading={isFetching}
+              onClick={() => refetch()}
+            >
+              Refresh
+            </Button>
             <Button
               variant="outline"
               icon={CheckCheck}

@@ -70,8 +70,9 @@ export default function Maintenance() {
   }, [all, tab, statusFilter, search]);
 
   const mapItems = useMemo(() => (mapQuery.data || []).map(readMaintenance), [mapQuery.data]);
+  // `located` only - nameless/unlocated areas have no pin, so they are not plotted.
   const mapPoints = mapItems.flatMap((item) =>
-    item.locations.map((location) => ({
+    item.located.map((location) => ({
       id: `${item.id}-${location.barangay}-${location.lat}-${location.lng}`,
       lat: location.lat,
       lng: location.lng,

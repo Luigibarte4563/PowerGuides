@@ -6,7 +6,7 @@ import { Input, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { useReference } from '@/context/ReferenceContext';
 import { useToast } from '@/context/ToastContext';
-import { barangayMatchHint, useBarangayFromPin } from '@/hooks/useBarangayFromPin';
+import { ADDRESS_HINT, PIN_HINT, useBarangayCoords } from '@/hooks/useBarangayCoords';
 import { FLOOD_LEVELS, floodsApi } from '@/api';
 import { toFieldErrors, toUserMessage } from '@/utils/errorMessage';
 import { clearFieldError, collectErrors, hasErrors, validateRequired } from '@/utils/validators';
@@ -28,7 +28,7 @@ export default function FloodFormModal({ open, onClose, defaultLocation = null }
   const { barangays } = useReference();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const matchBarangay = useBarangayFromPin();
+  const { coordsFor } = useBarangayCoords();
 
   const [values, setValues] = useState({
     locationName: '',
@@ -40,8 +40,6 @@ export default function FloodFormModal({ open, onClose, defaultLocation = null }
   });
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
-  // The barangay the current pin resolved to; cleared if the user picks one.
-  const [pinBarangay, setPinBarangay] = useState(null);
 
   const create = useMutation({
     mutationFn: (payload) => floodsApi.create(payload),
@@ -55,7 +53,6 @@ export default function FloodFormModal({ open, onClose, defaultLocation = null }
         depth: '',
         location: null,
       });
-      setPinBarangay(null);
       setErrors({});
       queryClient.invalidateQueries({ queryKey: ['floods'] });
       queryClient.invalidateQueries({ queryKey: ['risks'] });
@@ -73,18 +70,20 @@ export default function FloodFormModal({ open, onClose, defaultLocation = null }
     setFormError('');
   };
 
-  /** Dropping a pin fills in the barangay; an unmatchable pin changes nothing. */
-  const handleLocation = (next) => {
-    setField('location', next);
-    const match = matchBarangay(next);
-    setPinBarangay(match);
-    if (match) setField('barangayName', match.name);
+  /** The pin only refines the point; the barangay decides where it starts. */
+  const handleLocation = (next) => setField('location', next);
+
+  /** Choosing a barangay moves the pin onto that barangay's stored centre. */
+  const handleBarangay = (name) => {
+    setField('barangayName', name);
+    setField('location', coordsFor(name));
   };
 
   const handleSubmit = () => {
     setFormError('');
     const validationErrors = collectErrors({
       locationName: () => validateRequired(values.locationName, 'Location name'),
+      barangayName: () => validateRequired(values.barangayName, 'Barangay'),
       description: () => {
         const required = validateRequired(values.description, 'Description');
         if (required) return required;
@@ -105,7 +104,7 @@ export default function FloodFormModal({ open, onClose, defaultLocation = null }
       description: String(values.description).trim(),
       barangay_name: values.barangayName || '',
       flood_depth_cm: values.depth === '' ? null : Number(values.depth),
-      // Only sent when a pin was dropped - otherwise the server geocodes the name.
+      // Only sent when the user refined the pin; otherwise the barangay centroid is used.
       ...(values.location
         ? { latitude: values.location.lat, longitude: values.location.lng }
         : {}),
@@ -132,7 +131,7 @@ export default function FloodFormModal({ open, onClose, defaultLocation = null }
           value={values.locationName}
           onChange={(event) => setField('locationName', event.target.value)}
           error={errors.locationName}
-          hint="Drop a pin below and this is used as the fallback address."
+          hint={ADDRESS_HINT}
         />
         <Select
           label="Flood level"
@@ -143,16 +142,14 @@ export default function FloodFormModal({ open, onClose, defaultLocation = null }
           error={errors.floodLevel}
         />
         <Select
-          label="Barangay (optional)"
+          label="Barangay"
+          required
           placeholder="Select a barangay"
           options={barangays}
           value={values.barangayName}
-          onChange={(event) => {
-            setPinBarangay(null);
-            setField('barangayName', event.target.value);
-          }}
+          onChange={(event) => handleBarangay(event.target.value)}
           error={errors.barangayName}
-          hint={barangayMatchHint(pinBarangay)}
+          hint={ADDRESS_HINT}
         />
         <Input
           label="Depth in cm (optional)"
@@ -177,14 +174,13 @@ export default function FloodFormModal({ open, onClose, defaultLocation = null }
 
       <div className="rounded-card border border-navy-100 p-4">
         <MapPicker
-          label="Exact location (recommended)"
+          label="Exact location (optional)"
           value={values.location}
           onChange={handleLocation}
           disabled={create.isPending}
         />
         <p className="mt-2 text-xs text-navy-500">
-          The barangay above fills in automatically from your pin. Without a pin the server geocodes the
-          address you typed instead.
+          {PIN_HINT}
         </p>
       </div>
     </FormModal>

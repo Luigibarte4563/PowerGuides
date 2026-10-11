@@ -98,7 +98,11 @@ export default function NotificationComposeModal({ open, onClose, defaultRecipie
       );
       setValues({ title: '', message: '', type: DEFAULT_TYPE, recipients: '' });
       setErrors({});
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notifications({}) });
+      // Prefix match on `['notifications']`, NOT `QUERY_KEYS.notifications({})`.
+      // The key factory appends its params (`['notifications', { limit: 50 }]`),
+      // so invalidating with `{}` or `undefined` as the second element matches
+      // nothing and the sender's own bell kept its stale count.
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.unreadCount });
       onClose();
     },
@@ -144,7 +148,7 @@ export default function NotificationComposeModal({ open, onClose, defaultRecipie
         value={values.title}
         onChange={set('title')}
         error={errors.title}
-        placeholder="Power maintenance in Barangay San Carlos"
+        placeholder="Scheduled power interruption this Saturday"
         maxLength={120}
       />
 
@@ -197,9 +201,11 @@ export default function NotificationComposeModal({ open, onClose, defaultRecipie
       ) : null}
 
       <InfoNote>
-        The API accepts explicit user ids only. Broadcasting to everyone, or to everyone in a
-        barangay, needs an audience endpoint on the server - the current build cannot derive those
-        recipients.
+        This sends a <strong className="font-semibold">general notification</strong> that is not
+        linked to any specific outage, maintenance, flood or hazard - recipients see only the title
+        and message you write here, with no location attached. The API accepts explicit user ids
+        only, so broadcasting to everyone, or to everyone in a barangay, needs an audience endpoint
+        on the server - the current build cannot derive those recipients.
       </InfoNote>
 
       {/* FR-NOT-5 - preview, rendered with the same markup the top-bar bell uses. */}

@@ -153,6 +153,12 @@ export function resolveImageUrl(url) {
 /**
  * `maintenance/get.php` groups one row per schedule with a `locations` array of
  * `{ barangay_name, lat, lng }` and a `radius` in metres.
+ *
+ * A location is kept even when it has no coordinates. `lat`/`lng` are filled in by
+ * geocoding the barangay name at create/update time, so a geocoder failure (quota,
+ * network) leaves them null - dropping those entries would also drop the barangay
+ * NAME, which is the one thing the schedule cannot show without. `located` is the
+ * coordinate-bearing subset, and is what the map plots.
  */
 export const readMaintenance = (record) => {
   const locations = (Array.isArray(record?.locations) ? record.locations : [])
@@ -161,7 +167,10 @@ export const readMaintenance = (record) => {
       lat: toNumber(readField(location, ['lat', 'latitude'], null), null),
       lng: toNumber(readField(location, ['lng', 'longitude'], null), null),
     }))
-    .filter((location) => Number.isFinite(location.lat) && Number.isFinite(location.lng));
+    .filter((location) => location.barangay);
+  const located = locations.filter(
+    (location) => Number.isFinite(location.lat) && Number.isFinite(location.lng)
+  );
 
   const date = readField(record, ['maintenance_date'], '');
   const start = readField(record, ['start_time'], '');
@@ -181,9 +190,10 @@ export const readMaintenance = (record) => {
     radius: toNumber(readField(record, ['radius'], null), null),
     description: readField(record, ['description'], ''),
     locations,
+    located,
     barangay: locations.map((location) => location.barangay).filter(Boolean).join(', '),
-    lat: locations[0]?.lat ?? null,
-    lng: locations[0]?.lng ?? null,
+    lat: located[0]?.lat ?? null,
+    lng: located[0]?.lng ?? null,
     createdAt: readField(record, ['created_at'], ''),
   };
 };

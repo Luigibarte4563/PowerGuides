@@ -122,7 +122,9 @@ export default function Maintenance() {
       : mapQuery.data || [];
     return filtered.flatMap((row) => {
       const schedule = readMaintenance(row);
-      return schedule.locations.map((location, index) => ({
+      // `located` only - a location without coordinates has no pin to draw, though it
+      // still has a name and is listed in the Barangays column.
+      return schedule.located.map((location, index) => ({
         ...location,
         id: `${schedule.id}-${index}`,
         title: schedule.title,

@@ -27,6 +27,8 @@ import { apiRequest, pickList } from './client';
  *              -> { success, message, maintenance_id, barangays, users_notified }
  *              `barangays` is an array of NAMES; each is geocoded. A 409 means a
  *              schedule already exists for that date + barangay.
+ *              Every `user` with a saved location is notified. The message says whether
+ *              their own area is affected or that the work is not in their area.
  *   update.php  POST { maintenance_id*, status?, maintenance_date?, start_time?, end_time?,
  *                      description?, radius?, barangays? }
  *              PARTIAL UPDATE. Every field except `maintenance_id` is optional and falls back
@@ -44,9 +46,11 @@ import { apiRequest, pickList } from './client';
  *                   residents_notified, barangays, users_notified, notification_breakdown }
  *              `notification_breakdown` = { by_barangay, by_radius, no_location, out_of_area,
  *              degraded } and explains `users_notified`: `no_location` counts residents with
- *              no saved location at all, `out_of_area` counts those deliberately skipped as
- *              outside the radius. Validation problems now answer 400 (not 500) with no
+ *              no saved location at all, `out_of_area` counts those outside the radius.
+ *              Validation problems now answer 400 (not 500) with no
  *              server paths in the body.
+ *              Every resident with a saved location is notified; the message says whether
+ *              their area is affected or that the work is not in their area.
  *              Known gap (SEC-2): the role is checked but ownership is not, so any company
  *              user can edit any schedule.
  *   delete.php  POST { maintenance_id* } - owner-scoped: `created_by` must be the

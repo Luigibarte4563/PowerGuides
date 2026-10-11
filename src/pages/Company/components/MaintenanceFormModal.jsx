@@ -107,8 +107,8 @@ function describeNotification(result) {
  * come from `reference/get.php` and only real barangays are submitted).
  *
  * FR-MNT-7 - "notify affected residents" is not a parameter. Both endpoints notify
- * every `user` with a saved location inside `radius` automatically, so the checkbox
- * is an explanation of what will happen rather than a switch, and the number the
+ * every `user` with a saved location automatically; `radius` only decides whether the
+ * message says their area is affected or reassures them it is not. The number the
  * server reports back is shown after saving.
  *
  * KNOWN GAP: `update.php` answers HTTP 500 for ordinary validation problems
@@ -229,8 +229,8 @@ export default function MaintenanceFormModal({ open, schedule, onClose, onSaved 
         <span className="mr-auto inline-flex items-center gap-1.5 text-xs text-navy-400">
           <Send className="h-3.5 w-3.5" aria-hidden="true" />
           {isEdit
-            ? 'Notifies residents when something changes'
-            : 'Creating notifies residents in range'}
+            ? 'Saving sends residents an update'
+            : 'Creating notifies all residents with a saved location'}
         </span>
       }
     >
@@ -252,7 +252,7 @@ export default function MaintenanceFormModal({ open, schedule, onClose, onSaved 
             }))}
             value={values.status}
             onChange={set('status')}
-            hint="Changing this notifies the residents in range. Saving without changing anything does not notify anyone again."
+            hint="Changing this sends a new update to residents — the message tells each one whether their area is affected or not."
           />
         ) : null}
         <Input
@@ -276,7 +276,7 @@ export default function MaintenanceFormModal({ open, schedule, onClose, onSaved 
           options={RADIUS_OPTIONS}
           value={String(values.radius)}
           onChange={set('radius')}
-          hint="Residents with a saved location inside this radius are notified automatically."
+          hint="Every resident with a saved location is notified; this radius decides who is told their area is affected and who is just informed."
         />
         <div className="sm:col-span-2">
           <Textarea
@@ -297,7 +297,7 @@ export default function MaintenanceFormModal({ open, schedule, onClose, onSaved 
           </span>
         </legend>
         <p className="mt-1 text-xs text-navy-400">
-          Each selected barangay is geocoded so it can be drawn on the maintenance map.
+          Each selected barangay uses its stored coordinates for the maintenance map.
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
           {(barangays || []).map((option) => {

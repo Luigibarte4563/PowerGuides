@@ -3,6 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import FormModal from '@/components/FormModal';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import MapPicker from '@/components/MapPicker';
+import { ADDRESS_HINT, PIN_HINT, useBarangayCoords } from '@/hooks/useBarangayCoords';
 import { useToast } from '@/context/ToastContext';
 import { powerStationsApi } from '@/api';
 import { toFieldErrors, toUserMessage } from '@/utils/errorMessage';
@@ -39,12 +41,13 @@ export const STATION_AVAILABILITY = [
   { id: 'maintenance', name: 'Under maintenance' },
 ];
 
-const FIELD_ORDER = ['stationName', 'locationName', 'stationType', 'accessType', 'availabilityStatus'];
+const FIELD_ORDER = ['stationName', 'locationName', 'stationType', 'accessType', 'availabilityStatus', 'barangayName'];
 
 export default function PowerStationFormModal({ open, onClose, station = null, barangays = [] }) {
   const isEdit = Boolean(station?.id);
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { coordsFor } = useBarangayCoords();
 
   const [values, setValues] = useState(() => ({
     stationName: station?.name ?? '',
@@ -56,6 +59,10 @@ export default function PowerStationFormModal({ open, onClose, station = null, b
     operatingHours: station?.operatingHours || '',
     chargingType: station?.chargingType || '',
     description: station?.description || '',
+    location:
+      Number.isFinite(station?.lat) && Number.isFinite(station?.lng)
+        ? { lat: station.lat, lng: station.lng }
+        : null,
   }));
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
@@ -89,7 +96,14 @@ export default function PowerStationFormModal({ open, onClose, station = null, b
     collectErrors({
       stationName: () => validateRequired(values.stationName, 'Station name'),
       locationName: () => validateRequired(values.locationName, 'Location'),
+      barangayName: () => validateRequired(values.barangayName, 'Barangay'),
     });
+
+  /** Choosing a barangay moves the pin onto that barangay's stored centre. */
+  const handleBarangay = (name) => {
+    setField('barangayName', name);
+    setField('location', coordsFor(name));
+  };
 
   const handleSubmit = () => {
     setFormError('');
@@ -101,7 +115,6 @@ export default function PowerStationFormModal({ open, onClose, station = null, b
 
     const payload = {
       station_name: values.stationName.trim(),
-      // The server geocodes this string into latitude/longitude.
       location_name: values.locationName.trim(),
       station_type: values.stationType,
       access_type: values.accessType,
@@ -110,7 +123,10 @@ export default function PowerStationFormModal({ open, onClose, station = null, b
       operating_hours: values.operatingHours.trim(),
       charging_type: values.chargingType.trim(),
       description: values.description.trim(),
-    };
+      // Only sent when the user refined the pin past the barangay centroid.
+      ...(values.location
+        ? { latitude: values.location.lat, longitude: values.location.lng }
+        : {}),    };
 
     save.mutate(isEdit ? { ...payload, id: station.id } : payload);
   };
@@ -147,7 +163,7 @@ export default function PowerStationFormModal({ open, onClose, station = null, b
         value={values.locationName}
         onChange={(event) => setField('locationName', event.target.value)}
         error={errors.locationName}
-        hint="Write a full address. PowerGuide resolves it to map coordinates for you."
+        hint={ADDRESS_HINT}
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -174,11 +190,13 @@ export default function PowerStationFormModal({ open, onClose, station = null, b
           hint="Update this whenever the station changes state."
         />
         <Select
-          label="Barangay (optional)"
+          label="Barangay"
+          required
           placeholder="Select a barangay"
           options={barangays}
           value={values.barangayName}
-          onChange={(event) => setField('barangayName', event.target.value)}
+          onChange={(event) => handleBarangay(event.target.value)}
+          error={errors.barangayName}
         />
         <Input
           label="Operating hours (optional)"
@@ -192,6 +210,16 @@ export default function PowerStationFormModal({ open, onClose, station = null, b
           value={values.chargingType}
           onChange={(event) => setField('chargingType', event.target.value)}
         />
+      </div>
+
+      <div className="rounded-card border border-navy-100 p-4">
+        <MapPicker
+          label="Exact location (optional)"
+          value={values.location}
+          onChange={(next) => setField('location', next)}
+          disabled={submitting}
+        />
+        <p className="mt-2 text-xs text-navy-500">{PIN_HINT}</p>
       </div>
 
       <Textarea

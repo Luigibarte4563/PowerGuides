@@ -8,7 +8,7 @@ import { Input, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { useReference } from '@/context/ReferenceContext';
 import { useToast } from '@/context/ToastContext';
-import { barangayMatchHint, useBarangayFromPin } from '@/hooks/useBarangayFromPin';
+import { ADDRESS_HINT, PIN_HINT, useBarangayCoords } from '@/hooks/useBarangayCoords';
 import { extractCreatedId, outagesApi } from '@/api';
 import { toFieldErrors, toUserMessage } from '@/utils/errorMessage';
 import { clearFieldError, collectErrors, hasErrors, validateRequired } from '@/utils/validators';
@@ -44,7 +44,7 @@ export default function OutageFormModal({ open, onClose, outage = null }) {
     useReference();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const matchBarangay = useBarangayFromPin();
+  const { coordsFor } = useBarangayCoords();
 
   const hasStoredPin = Number.isFinite(outage?.lat) && Number.isFinite(outage?.lng);
   const [values, setValues] = useState(() => ({
@@ -63,9 +63,6 @@ export default function OutageFormModal({ open, onClose, outage = null }) {
   const [progress, setProgress] = useState(0);
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
-  // The barangay the current pin resolved to, so the field can say where it came
-  // from. Cleared as soon as the user picks a barangay themselves.
-  const [pinBarangay, setPinBarangay] = useState(null);
 
   const createMutation = useMutation({
     mutationFn: (payload) => outagesApi.create(payload),
@@ -112,17 +109,19 @@ export default function OutageFormModal({ open, onClose, outage = null }) {
     setFormError('');
   };
 
-  /** Dropping a pin fills in the barangay; an unmatchable pin changes nothing. */
-  const handleLocation = (next) => {
-    setField('location', next);
-    const match = matchBarangay(next);
-    setPinBarangay(match);
-    if (match) setField('barangayName', match.name);
+  /** The pin only refines the point; the barangay decides where it starts. */
+  const handleLocation = (next) => setField('location', next);
+
+  /** Choosing a barangay moves the pin onto that barangay's stored centre. */
+  const handleBarangay = (name) => {
+    setField('barangayName', name);
+    setField('location', coordsFor(name));
   };
 
   const validate = () =>
     collectErrors({
       locationName: () => validateRequired(values.locationName, 'Location name'),
+      barangayName: () => validateRequired(values.barangayName, 'Barangay'),
       description: () => {
         const required = validateRequired(values.description, 'Description');
         if (required) return required;
@@ -151,7 +150,7 @@ export default function OutageFormModal({ open, onClose, outage = null }) {
       barangay_name: values.barangayName || '',
       affected_houses: values.affectedHouses === '' ? undefined : Number(values.affectedHouses),
       started_at: values.startedAt || undefined,
-      // Only sent when a pin was dropped - otherwise the server geocodes the name.
+      // Only sent when the user refined the pin; otherwise the barangay centroid is used.
       ...(values.location
         ? { latitude: values.location.lat, longitude: values.location.lng }
         : {}),
@@ -211,16 +210,14 @@ export default function OutageFormModal({ open, onClose, outage = null }) {
           error={errors.severity}
         />
         <Select
-          label="Barangay (optional)"
-          placeholder="Detected from the address or your pin"
+          label="Barangay"
+          required
+          placeholder="Select a barangay"
           options={barangays}
           value={values.barangayName}
-          onChange={(event) => {
-            setPinBarangay(null);
-            setField('barangayName', event.target.value);
-          }}
+          onChange={(event) => handleBarangay(event.target.value)}
           error={errors.barangayName}
-          hint={barangayMatchHint(pinBarangay)}
+          hint={ADDRESS_HINT}
         />
         <Select
           label="Associated hazard (optional)"
@@ -262,16 +259,13 @@ export default function OutageFormModal({ open, onClose, outage = null }) {
 
       <div className="rounded-card border border-navy-100 p-4">
         <MapPicker
-          label="Pin the exact location (recommended)"
+          label="Pin the exact location (optional)"
           value={values.location}
           onChange={handleLocation}
           disabled={submitting}
         />
         <p className="mt-2 text-xs text-navy-500">
-          Tap the map to drop a pin, drag it to adjust, or use{' '}
-          <span className="font-semibold text-navy-700">Use my location</span> to place it at your current
-          position. The barangay above is filled in automatically from the pin. Without a pin we locate
-          the report from the address you typed.
+          {PIN_HINT}
         </p>
       </div>
 

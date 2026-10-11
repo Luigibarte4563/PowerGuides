@@ -8,6 +8,12 @@ import { readNotification } from '@/utils/records';
  *
  * `notification/get.php` returns the authoritative `unread_count` (total unread,
  * ignoring filters), so the bell uses that instead of counting the visible page.
+ *
+ * `staleTime` is short and window-focus refetching is on, because notifications
+ * arrive from the server while the app is open (a maintenance broadcast, a
+ * status change) and a 30s cache made the list look broken when it simply had
+ * not been refetched. The page also exposes a manual Refresh button through the
+ * returned `refetch`.
  */
 export function useNotifications({ limit = 50 } = {}) {
   const query = useQuery({
@@ -16,7 +22,8 @@ export function useNotifications({ limit = 50 } = {}) {
       const { items, unreadCount } = await notificationsApi.list({ limit }, { signal });
       return { notifications: items.map(readNotification), serverUnreadCount: unreadCount };
     },
-    staleTime: 30 * 1000,
+    staleTime: 5 * 1000,
+    refetchOnWindowFocus: true,
     retry: 1,
   });
 

@@ -105,6 +105,13 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(
     async (credentials) => {
+      // Clear any existing session FIRST so a new login can't accidentally
+      // inherit the previous user's cookie (especially when switching roles
+      // without an explicit logout). The backend's login.php issues a new JWT
+      // and sets the cookie, but doing it here guarantees the client starts
+      // from a clean state.
+      setStoredToken(null);
+
       // `login.php` only sets the httpOnly `jwt_token` cookie and echoes back
       // `{ success, message, user_id, token_issued }` - it returns NO profile and NO role.
       //

@@ -6,7 +6,7 @@ import { Input, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { useReference } from '@/context/ReferenceContext';
 import { useToast } from '@/context/ToastContext';
-import { barangayMatchHint, useBarangayFromPin } from '@/hooks/useBarangayFromPin';
+import { ADDRESS_HINT, PIN_HINT, useBarangayCoords } from '@/hooks/useBarangayCoords';
 import { HAZARD_SEVERITIES, hazardsApi } from '@/api';
 import { toFieldErrors, toUserMessage } from '@/utils/errorMessage';
 import { clearFieldError, collectErrors, hasErrors, validateRequired } from '@/utils/validators';
@@ -30,7 +30,7 @@ export default function HazardFormModal({ open, onClose, defaultLocation = null 
   const { hazardTypes, barangays } = useReference();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const matchBarangay = useBarangayFromPin();
+  const { coordsFor } = useBarangayCoords();
 
   const [values, setValues] = useState({
     locationName: '',
@@ -42,8 +42,6 @@ export default function HazardFormModal({ open, onClose, defaultLocation = null 
   });
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
-  // The barangay the current pin resolved to; cleared if the user picks one.
-  const [pinBarangay, setPinBarangay] = useState(null);
 
   const create = useMutation({
     mutationFn: (payload) => hazardsApi.create(payload),
@@ -57,7 +55,6 @@ export default function HazardFormModal({ open, onClose, defaultLocation = null 
         barangayName: '',
         location: null,
       });
-      setPinBarangay(null);
       setErrors({});
       queryClient.invalidateQueries({ queryKey: ['hazards'] });
       queryClient.invalidateQueries({ queryKey: ['risks'] });
@@ -75,18 +72,20 @@ export default function HazardFormModal({ open, onClose, defaultLocation = null 
     setFormError('');
   };
 
-  /** Dropping a pin fills in the barangay; an unmatchable pin changes nothing. */
-  const handleLocation = (next) => {
-    setField('location', next);
-    const match = matchBarangay(next);
-    setPinBarangay(match);
-    if (match) setField('barangayName', match.name);
+  /** The pin only refines the point; the barangay decides where it starts. */
+  const handleLocation = (next) => setField('location', next);
+
+  /** Choosing a barangay moves the pin onto that barangay's stored centre. */
+  const handleBarangay = (name) => {
+    setField('barangayName', name);
+    setField('location', coordsFor(name));
   };
 
   const handleSubmit = () => {
     setFormError('');
     const validationErrors = collectErrors({
       locationName: () => validateRequired(values.locationName, 'Location name'),
+      barangayName: () => validateRequired(values.barangayName, 'Barangay'),
       description: () => {
         const required = validateRequired(values.description, 'Description');
         if (required) return required;
@@ -134,7 +133,7 @@ export default function HazardFormModal({ open, onClose, defaultLocation = null 
           value={values.locationName}
           onChange={(event) => setField('locationName', event.target.value)}
           error={errors.locationName}
-          hint="Drop a pin below and this is used as the fallback address."
+          hint={ADDRESS_HINT}
         />
         <Select
           label="Severity"
@@ -153,16 +152,14 @@ export default function HazardFormModal({ open, onClose, defaultLocation = null 
           error={errors.hazardType}
         />
         <Select
-          label="Barangay (optional)"
+          label="Barangay"
+          required
           placeholder="Select a barangay"
           options={barangays}
           value={values.barangayName}
-          onChange={(event) => {
-            setPinBarangay(null);
-            setField('barangayName', event.target.value);
-          }}
+          onChange={(event) => handleBarangay(event.target.value)}
           error={errors.barangayName}
-          hint={barangayMatchHint(pinBarangay)}
+          hint={ADDRESS_HINT}
         />
       </div>
 
@@ -178,14 +175,13 @@ export default function HazardFormModal({ open, onClose, defaultLocation = null 
 
       <div className="rounded-card border border-navy-100 p-4">
         <MapPicker
-          label="Exact location (recommended)"
+          label="Exact location (optional)"
           value={values.location}
           onChange={handleLocation}
           disabled={create.isPending}
         />
         <p className="mt-2 text-xs text-navy-500">
-          The barangay above fills in automatically from your pin. Without a pin the server geocodes the
-          address you typed instead.
+          {PIN_HINT}
         </p>
       </div>
 

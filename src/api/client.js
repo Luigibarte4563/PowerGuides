@@ -17,8 +17,14 @@
  * ---------------------------------------------------------------------------
  */
 
+/**
+ * Relative by default, so a missing .env still produces same-origin requests that
+ * the dev server (or the preview server) forwards to Apache - which means CORS is
+ * never involved and the session cookie always works. An absolute URL is opt-in
+ * and puts the API's origin allow-list back in play; see SETUP.md.
+ */
 export const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost/CrowdsourcedAPI'
+  import.meta.env.VITE_API_BASE_URL || '/CrowdsourcedAPI'
 ).replace(/\/+$/, '');
 
 /**
