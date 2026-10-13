@@ -81,6 +81,38 @@ export function formatRelativeTime(value) {
   return 'just now';
 }
 
+const DAY_KEY_FORMAT = new Intl.DateTimeFormat('en-CA', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  timeZone: DISPLAY_TIME_ZONE,
+});
+
+/**
+ * Calendar day as `YYYY-MM-DD`, in the same clock the timestamps are DISPLAYED in.
+ *
+ * Grouping notifications by day has to bucket on the *displayed* day, not the browser's
+ * local one: `toDate` parses MySQL's naive `"YYYY-MM-DD HH:MM:SS"` as local time, so a
+ * user in another zone would otherwise see a notification filed under a different day
+ * than the timestamp printed right next to it. Returns '' for an unusable value so the
+ * caller can route it to an "Unknown date" group rather than dropping it.
+ */
+export function formatDayKey(value) {
+  const date = toDate(value);
+  return date ? DAY_KEY_FORMAT.format(date) : '';
+}
+
+/** "Today" / "Yesterday" / the formatted date, for a timeline day header. */
+export function formatDayLabel(value, now = new Date()) {
+  const key = formatDayKey(value, now);
+  if (!key) return 'Unknown date';
+  if (key === formatDayKey(now, now)) return 'Today';
+  // The Philippines has no DST, so subtracting 24h always lands on the previous day.
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  if (key === formatDayKey(yesterday, now)) return 'Yesterday';
+  return formatDate(value);
+}
+
 /** Duration in seconds -> "1h 5m 10s" / "45s". */
 export function formatDuration(totalSeconds) {
   const seconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
@@ -140,7 +172,18 @@ export function humanize(value, fallback = '—') {
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 }
 
+/**
+ * Coerce to a finite number, or `fallback`.
+ *
+ * An ABSENT value is not a zero. `Number(null)`, `Number(undefined)` and `Number('')`
+ * are all `0`, so a naive `Number.isFinite` test accepted a NULL column as the
+ * coordinate 0 - which passes every "is this finite?" guard downstream and pins the
+ * record to Null Island in the Gulf of Guinea, then fits the map viewport to it.
+ * `readField` already falls back before this is reached, but it hands back `null`
+ * whenever the caller's own fallback is `null`, so the check has to live here too.
+ */
 export function toNumber(value, fallback = null) {
+  if (value === null || value === undefined || value === '') return fallback;
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 }
@@ -152,13 +195,27 @@ export function isTrue(value) {
   return false;
 }
 
+/**
+ * A usable coordinate pair - both present, finite, and not Null Island.
+ *
+ * The origin check is not redundant: (0, 0) is finite, so the null-to-zero trap in
+ * `toNumber` produces a value that passes a bare `isFinite` test. Null Island is not
+ * a legitimate location for this app, so an exact (0, 0) is rejected rather than
+ * plotted - otherwise one bad row zooms the fitted map to the whole world.
+ */
 export function hasCoordinates(lat, lng) {
-  return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+  const present = (value) => value !== null && value !== undefined && value !== '';
+  if (!present(lat) || !present(lng)) return false;
+
+  const a = Number(lat);
+  const b = Number(lng);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  return a !== 0 || b !== 0;
 }
 
 /** Great-circle distance in metres between two coordinates. */
 export function distanceInMeters(lat1, lng1, lat2, lng2) {
-  if (![lat1, lng1, lat2, lng2].every((v) => Number.isFinite(Number(v)))) return null;
+  if (!hasCoordinates(lat1, lng1) || !hasCoordinates(lat2, lng2)) return null;
   const toRad = (deg) => (Number(deg) * Math.PI) / 180;
   const R = 6371000;
   const dLat = toRad(lat2 - lat1);

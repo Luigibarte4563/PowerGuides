@@ -9,7 +9,7 @@ import { InfoNote } from '@/components/ui/Alert';
 import { useReference } from '@/context/ReferenceContext';
 import { useToast } from '@/context/ToastContext';
 import { maintenanceApi, MAINTAINABLE_STATUSES } from '@/api';
-import { COMPANY_QUERY_KEYS } from '@/utils/constants';
+import { COMPANY_QUERY_KEYS, MAX_MAINTENANCE_RADIUS_METERS, MAINTENANCE_RADIUS_METERS, clampMaintenanceRadius } from '@/utils/constants';
 import { readMaintenance } from '@/utils/records';
 import { humanize } from '@/utils/formatters';
 import { toFieldErrors, toUserMessage } from '@/utils/errorMessage';
@@ -20,13 +20,15 @@ import {
   validateRequired,
 } from '@/utils/validators';
 
-/** Radius options in metres; `create.php` defaults to 2000, `update.php` to 500. */
-const RADIUS_OPTIONS = [
-  { value: 500, label: '500 m' },
-  { value: 1000, label: '1 km' },
-  { value: 2000, label: '2 km' },
-  { value: 5000, label: '5 km' },
-];
+/**
+ * Radius options in metres.
+ *
+ * A single 500 m option, not the shared `RADIUS_OPTIONS`: barangay centres in Dagupan
+ * are only 1-4 km apart, so a wider circle covers every neighbouring area and the
+ * affected-area map stops telling schedules apart. 500 m is also what `update.php`
+ * already defaulted to.
+ */
+const RADIUS_OPTIONS = [{ value: MAX_MAINTENANCE_RADIUS_METERS, label: '500 m' }];
 
 const FIELD_ORDER = [
   'maintenanceDate',
@@ -42,7 +44,7 @@ const EMPTY = {
   startTime: '',
   endTime: '',
   description: '',
-  radius: 2000,
+  radius: MAINTENANCE_RADIUS_METERS,
   status: 'upcoming',
   barangays: [],
 };
@@ -54,7 +56,10 @@ function toFormValues(schedule) {
     startTime: (schedule.startTime || '').slice(0, 5),
     endTime: (schedule.endTime || '').slice(0, 5),
     description: schedule.description || '',
-    radius: Number(schedule.radius) || 2000,
+    // Clamped, not just defaulted: a row created before the 500 m ceiling still holds
+    // 2000, and opening it must pre-select the 500 m pill so saving it normalises the
+    // stored value instead of silently re-saving 2000.
+    radius: clampMaintenanceRadius(schedule.radius),
     status: schedule.status || 'upcoming',
     barangays: schedule.locations.map((location) => location.barangay).filter(Boolean),
   };
@@ -192,7 +197,9 @@ export default function MaintenanceFormModal({ open, schedule, onClose, onSaved 
       start_time: values.startTime,
       end_time: values.endTime,
       description: values.description.trim(),
-      radius: Number(values.radius) || 2000,
+      // Clamped on the way out as well: `create.php` still defaults to 2000 when the
+      // field is absent, so the value is pinned here rather than relying on the picker.
+      radius: clampMaintenanceRadius(values.radius),
       barangays: values.barangays,
     };
     if (isEdit) {
@@ -276,7 +283,7 @@ export default function MaintenanceFormModal({ open, schedule, onClose, onSaved 
           options={RADIUS_OPTIONS}
           value={String(values.radius)}
           onChange={set('radius')}
-          hint="Every resident with a saved location is notified; this radius decides who is told their area is affected and who is just informed."
+          hint={`Every resident with a saved location is notified; this radius decides who is told their area is affected and who is just informed. Capped at 500 m — barangay centres are only 1–4 km apart, so a wider circle would cover neighbouring areas.`}
         />
         <div className="sm:col-span-2">
           <Textarea

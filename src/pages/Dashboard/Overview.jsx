@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
-  Bell,
   CalendarClock,
   MapPin,
   Plug,
@@ -21,7 +20,6 @@ import { ErrorState, SkeletonList } from '@/components/ui/States';
 import AppMap, { MapPin as MapPinMarker } from '@/components/Map';
 import RecordCard from '@/components/RecordCard';
 import { useAuth } from '@/context/AuthContext';
-import { useNotifications } from '@/hooks/useNotifications';
 import { useSavedLocation } from '@/hooks/useSavedLocation';
 import {
   floodsApi,
@@ -62,13 +60,6 @@ export default function Overview() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { coords, hasLocation } = useSavedLocation();
-  const { unreadCount, isLoading: notificationsLoading } = useNotifications();
-
-  const activeOutages = useQuery({
-    queryKey: QUERY_KEYS.outages({ scope: 'active' }),
-    queryFn: async ({ signal }) => (await outagesApi.getActive({}, { signal })).count,
-    staleTime: 60 * 1000,
-  });
 
   const myReports = useQuery({
     queryKey: QUERY_KEYS.outages({ scope: 'mine' }),
@@ -124,7 +115,9 @@ export default function Overview() {
     ...(nearbyRisks.data?.hazards || []).map((item) => ({ item: readHazard(item), kind: 'hazard' })),
   ].slice(0, 5);
 
-  const openFloods = countOpen(floodReports.data, readFlood);
+  // Only hazards are counted for the summary now - floods still appear in the
+  // "Latest reports" feed and on the Area map, so the flood query stays but its
+  // counter no longer has a card to feed.
   const openHazards = countOpen(hazardReports.data, readHazard);
 
   // Every report type in one feed, newest first.
@@ -176,23 +169,32 @@ export default function Overview() {
         }
       />
 
-      {/* Summary cards - one per report type, so every module is represented. */}
+      {/*
+        Summary cards - the four things a resident can act on from the overview:
+        where to get power, what is coming, what is unsafe, and what is close by.
+
+        Deliberately only these four. The outage, flood and my-report counts were
+        dropped, but nothing is lost: outages and floods still surface in the
+        "Latest reports" feed and the Area map below, and the unread count is already
+        on the topbar bell. Four cards fill the `lg:grid-cols-4` row exactly, where
+        eight wrapped onto two rows and pushed the quick actions below the fold.
+      */}
       <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard
-          label="Active outages"
-          value={activeOutages.data}
-          isLoading={activeOutages.isLoading}
-          icon={Zap}
-          tone="danger"
-          to="/dashboard/outages"
+          label="Power stations available"
+          value={availableStations.data}
+          isLoading={availableStations.isLoading}
+          icon={Plug}
+          tone="success"
+          to="/dashboard/power-stations"
         />
         <SummaryCard
-          label="Open flood reports"
-          value={openFloods}
-          isLoading={floodReports.isLoading}
-          icon={Waves}
-          tone="info"
-          to="/dashboard/floods"
+          label="Upcoming maintenance"
+          value={upcomingMaintenance.data?.length}
+          isLoading={upcomingMaintenance.isLoading}
+          icon={CalendarClock}
+          tone="primary"
+          to="/dashboard/maintenance?filter=upcoming"
         />
         <SummaryCard
           label="Open hazards"
@@ -209,38 +211,6 @@ export default function Overview() {
           icon={ShieldAlert}
           tone="navy"
           to="/dashboard/risk-areas"
-        />
-        <SummaryCard
-          label="My reports"
-          value={myReports.data?.length}
-          isLoading={myReports.isLoading}
-          icon={MapPin}
-          tone="info"
-          to="/dashboard/outages?tab=mine"
-        />
-        <SummaryCard
-          label="Unread notifications"
-          value={notificationsLoading ? null : unreadCount}
-          isLoading={notificationsLoading}
-          icon={Bell}
-          tone="warning"
-          to="/dashboard/notifications"
-        />
-        <SummaryCard
-          label="Upcoming maintenance"
-          value={upcomingMaintenance.data?.length}
-          isLoading={upcomingMaintenance.isLoading}
-          icon={CalendarClock}
-          tone="primary"
-          to="/dashboard/maintenance?filter=upcoming"
-        />
-        <SummaryCard
-          label="Power stations available"
-          value={availableStations.data}
-          isLoading={availableStations.isLoading}
-          icon={Plug}
-          tone="success"
-          to="/dashboard/power-stations"
         />
       </section>
 

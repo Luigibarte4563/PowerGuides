@@ -4,11 +4,23 @@ import { Bell, CheckCheck, ChevronDown, LogOut, Menu, Moon, Settings, Sun, User 
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
-import { useMarkAllAsRead, useNotifications } from '@/hooks/useNotifications';
+import { useMarkAllAsRead, useMarkAsRead, useNotifications } from '@/hooks/useNotifications';
+import NotificationDetailModal from '@/components/NotificationDetailModal';
 import { findNavItem } from '@/routes/navItems';
 import { ROLE_LABELS, normaliseRole } from '@/utils/roles';
 import { formatRelativeTime, humanize } from '@/utils/formatters';
+import { NOTIFICATION_TYPE_TONES } from '@/utils/notifications';
 import { toUserMessage } from '@/utils/errorMessage';
+
+/** Dot colour per notification-type tone, used as a glanceable cue in the bell. */
+const BELL_DOT = {
+  primary: 'bg-primary-500',
+  info: 'bg-info-500',
+  success: 'bg-success-500',
+  warning: 'bg-warning-500',
+  danger: 'bg-danger-500',
+  navy: 'bg-navy-400',
+};
 
 function initials(name = '') {
   return (
@@ -65,9 +77,13 @@ export default function Topbar({
 
   const { notifications, unreadCount, isLoading } = useNotifications();
   const markAll = useMarkAllAsRead();
+  const markOne = useMarkAsRead();
 
   const [bellOpen, setBellOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // The id, not the object: the bell's query is invalidated after a write, so holding a
+  // snapshot would leave the dialog showing "Unread" after marking it read.
+  const [selectedId, setSelectedId] = useState(null);
   const [error, setError] = useState('');
   const bellRef = useRef(null);
   const menuRef = useRef(null);
@@ -76,6 +92,19 @@ export default function Topbar({
   useDismissable(menuRef, () => setMenuOpen(false));
 
   const recent = notifications.slice(0, 5);
+  const selectedNotification = notifications.find((item) => item.id === selectedId) || null;
+
+  /**
+   * Closing the dropdown before opening the dialog keeps the two from overlapping.
+   * `useDismissable` only reacts to a pointer that starts OUTSIDE the bell, so a click
+   * on a row here still reaches `onClick` normally; the modal portal sits outside
+   * `bellRef`, and a later click inside it merely re-runs the (already applied)
+   * dismissal.
+   */
+  const openNotification = (notification) => {
+    setBellOpen(false);
+    setSelectedId(notification.id);
+  };
 
   const handleLogout = async () => {
     setError('');
@@ -191,16 +220,42 @@ export default function Topbar({
                       {!notification.isRead ? (
                         <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary-500" aria-label="Unread" />
                       ) : null}
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold uppercase tracking-wide text-navy-400 dark:text-navy-400">
+                      <div className="min-w-0 flex-1">
+                        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-navy-400 dark:text-navy-400">
+                          <span
+                            className={clsx(
+                              'h-1.5 w-1.5 shrink-0 rounded-full',
+                              BELL_DOT[NOTIFICATION_TYPE_TONES[notification.type]] || 'bg-navy-300'
+                            )}
+                            aria-hidden="true"
+                          />
                           {humanize(notification.type, 'Update')}
                         </p>
-                        <p className="line-clamp-2 text-sm text-navy-700 dark:text-navy-200">
-                          {notification.title || notification.message || 'New update'}
+                        <p className="line-clamp-2 text-sm font-semibold text-navy-800 dark:text-navy-100">
+                          {notification.title || 'New update'}
                         </p>
-                        <p className="mt-0.5 text-xs text-navy-400 dark:text-navy-400">
-                          {formatRelativeTime(notification.createdAt)}
+                        {/*
+                          The message preview was `title || message`, so the bell showed
+                          the title and the message was never visible here at all. It is
+                          now a second line, still clamped because the dropdown is a
+                          preview - the full text is one click away, and the history
+                          screen shows all of it.
+                        */}
+                        <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-navy-500 dark:text-navy-300">
+                          {notification.message || 'No message was sent with this notification.'}
                         </p>
+                        <div className="mt-1.5 flex items-center justify-between gap-2">
+                          <span className="text-xs text-navy-400 dark:text-navy-400">
+                            {formatRelativeTime(notification.createdAt)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => openNotification(notification)}
+                            className="text-xs font-semibold text-primary-700 transition hover:text-primary-800 dark:text-primary-300 dark:hover:text-primary-200"
+                          >
+                            View
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </li>
@@ -288,6 +343,16 @@ export default function Topbar({
           </div>
         ) : null}
       </div>
+
+      {/* Full notification view, opened from the bell. Rendered outside the header so
+          the z-indexed modal portal is not clipped by the sticky bar. */}
+      <NotificationDetailModal
+        notification={selectedNotification}
+        open={selectedNotification !== null}
+        onClose={() => setSelectedId(null)}
+        onMarkRead={(notification) => markOne.mutate(notification.id)}
+        isMarking={markOne.isPending}
+      />
     </header>
   );
 }

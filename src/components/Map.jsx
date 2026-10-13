@@ -304,29 +304,58 @@ export function MapHitAreas({ items = [], radius = 36, radiusFor, children }) {
  *
  * Re-fits only when the SET of coordinates changes (not on every render), so
  * panning/zooming by hand is not fought by a re-render of the parent.
+ *
+ * `radiusFor(item)` is optional. When given, each point is grown by its own radius
+ * before fitting, so a map of coverage areas shows the WHOLE circle rather than just
+ * its centre - otherwise a 2 km circle on a barangay near the edge of the fitted
+ * bounds spills off-screen and the map under-reports its own coverage. It is held in
+ * a ref rather than a dependency because callers pass an inline arrow, which would
+ * otherwise re-run this effect on every render and fight the user's panning.
  */
-export function FitPoints({ items = [], padding = 56, maxZoom = 16, animate = true }) {
+export function FitPoints({ items = [], padding = 56, maxZoom = 16, animate = true, radiusFor }) {
   const map = useMap();
 
+  // `{ lat, lng, item }` rather than bare pairs, so `radiusFor` receives the original
+  // item and not a coordinate that has lost its association with its record.
   const points = useMemo(
     () =>
       items
-        .map((item) => [Number(item.lat), Number(item.lng ?? item.lon)])
-        .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng)),
+        .map((item) => ({ lat: Number(item.lat), lng: Number(item.lng ?? item.lon), item }))
+        .filter(({ lat, lng }) => Number.isFinite(lat) && Number.isFinite(lng)),
     [items]
   );
 
-  const signature = points.map(([lat, lng]) => `${lat.toFixed(5)},${lng.toFixed(5)}`).join('|');
+  const radiusForRef = useRef(radiusFor);
+  radiusForRef.current = radiusFor;
+
+  const signature = points.map(({ lat, lng }) => `${lat.toFixed(5)},${lng.toFixed(5)}`).join('|');
 
   useEffect(() => {
     if (!points.length) return;
-    if (points.length === 1) {
-      map.setView(points[0], Math.min(maxZoom, 15), { animate });
+
+    const resolveRadius = radiusForRef.current;
+    const maxRadius = resolveRadius
+      ? points.reduce((widest, { item }) => {
+          const radius = Number(resolveRadius(item));
+          return Number.isFinite(radius) && radius > widest ? radius : widest;
+        }, 0)
+      : 0;
+
+    if (points.length === 1 && !maxRadius) {
+      map.setView([points[0].lat, points[0].lng], Math.min(maxZoom, 15), { animate });
       return;
     }
-    map.fitBounds(L.latLngBounds(points), { padding: [padding, padding], maxZoom, animate });
+
+    const bounds = L.latLngBounds([]);
+    points.forEach(({ lat, lng }) => {
+      // `toBounds` grows a square `2 * r` across, i.e. `r` in every direction.
+      bounds.extend(maxRadius ? L.latLng(lat, lng).toBounds(maxRadius * 2) : L.latLng(lat, lng));
+    });
+
+    map.fitBounds(bounds, { padding: [padding, padding], maxZoom, animate });
     // `signature` stands in for `points` so a re-render with an equal set of
-    // coordinates does not yank the viewport back.
+    // coordinates does not yank the viewport back; `radiusFor` is read through a ref
+    // for the same reason.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature, map, padding, maxZoom, animate]);
 

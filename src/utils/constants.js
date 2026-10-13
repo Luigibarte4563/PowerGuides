@@ -26,6 +26,42 @@ export const RADIUS_OPTIONS = [
  */
 export const SERVICE_AREA_RADIUS_METERS = 25000;
 
+/**
+ * Ceiling on a maintenance schedule's notify radius.
+ *
+ * Dagupan barangay centres sit roughly 1-4 km apart, so a 2 km circle centred on one
+ * swallows most of the city - every other affected area fell inside it and the map
+ * stopped distinguishing one schedule from another. 500 m keeps each circle visually
+ * tied to its own barangay.
+ *
+ * Deliberately NOT `DEFAULT_RADIUS_METERS` / `RADIUS_OPTIONS`: those belong to the
+ * "near me" searches (RiskAreas, Floods, Outages, PowerStations, MapRisk, Hazards),
+ * which legitimately need 2-5 km and are left untouched.
+ */
+export const MAX_MAINTENANCE_RADIUS_METERS = 500;
+
+/** The radius a maintenance schedule uses when none is stored or supplied. */
+export const MAINTENANCE_RADIUS_METERS = MAX_MAINTENANCE_RADIUS_METERS;
+
+/**
+ * Clamp a stored or entered maintenance radius to the ceiling.
+ *
+ * Applied on READ as well as on write. `maintenance_schedules.radius` is
+ * `int NULL DEFAULT 2000` and rows created before the cap still hold 2000, so
+ * clamping only in the form would leave those rows drawing a city-sized circle until
+ * someone reopened and saved them. Clamping in the normaliser fixes them at once,
+ * everywhere the value is shown.
+ *
+ * An absent or non-positive radius falls back to the default rather than 0, because
+ * `radius` also decides who is told their area is affected - 0 would silently tell
+ * nobody.
+ */
+export function clampMaintenanceRadius(value) {
+  const radius = Number(value);
+  if (!Number.isFinite(radius) || radius <= 0) return MAINTENANCE_RADIUS_METERS;
+  return Math.min(radius, MAX_MAINTENANCE_RADIUS_METERS);
+}
+
 /** True when a point is too far from Dagupan to be inside the service area. */
 export function isOutsideServiceArea(point) {
   const lat = Number(point?.lat);

@@ -11,7 +11,7 @@ import { Select } from '@/components/ui/Select';
 import { TBody, TD, TH, THead, TR, Table } from '@/components/ui/Table';
 import DataView from '@/components/DataView';
 import RecordCard from '@/components/RecordCard';
-import AppMap, { FitPoints, MapLegend, MapPoints, RadiusCircle } from '@/components/Map';
+import AppMap, { FitPoints, MapCircle, MapLegend, MapPoints, PIN_COLORS } from '@/components/Map';
 import MapWorkspace from '@/components/MapWorkspace';
 import { maintenanceApi, UPCOMING_STATUSES } from '@/api';
 import { QUERY_KEYS } from '@/utils/constants';
@@ -81,6 +81,39 @@ export default function Maintenance() {
     }))
   );
 
+  /**
+   * Coverage is a CIRCLE per affected barangay, not a pin.
+   *
+   * `maintenance_schedules.radius` belongs to the schedule, and one schedule can cover
+   * several barangays - so it has to be drawn at every one of them. This used to
+   * render a single `RadiusCircle` at `mapPoints[0]`, which put one circle on whichever
+   * barangay happened to sort first and left every other affected area as a bare pin.
+   *
+   * `radius` is a nullable column, so a location without one falls back to the pin
+   * rather than disappearing from the map entirely.
+   */
+  const hasRadius = (point) => Number(point.schedule?.radius) > 0;
+  const circlePoints = mapPoints.filter(hasRadius);
+  const pinPoints = mapPoints.filter((point) => !hasRadius(point));
+
+  const renderMapPopup = (point) => (
+    <div className="min-w-[12rem]">
+      <p className="font-bold text-navy-900">{point.schedule.title}</p>
+      <p className="text-xs text-navy-500">{point.label}</p>
+      <p className="mt-1 text-xs text-navy-600">{formatDateTime(point.schedule.startAt)}</p>
+      {hasRadius(point) ? (
+        <p className="mt-1 text-xs text-navy-600">
+          Notify radius {formatDistance(point.schedule.radius)}
+        </p>
+      ) : null}
+      {point.schedule.status ? (
+        <Badge tone={statusTone(point.schedule.status)} size="sm" className="mt-2">
+          {humanize(point.schedule.status)}
+        </Badge>
+      ) : null}
+    </div>
+  );
+
   const statusOptions = useMemo(
     () => Array.from(new Set(all.map((item) => item.status).filter(Boolean))).map((status) => ({ id: status, name: humanize(status) })),
     [all]
@@ -99,22 +132,28 @@ export default function Maintenance() {
       </p>
     ) : (
       <AppMap className="h-full w-full">
-        <FitPoints items={mapPoints} />
-        <RadiusCircle center={mapPoints[0]} radius={mapPoints[0]?.schedule?.radius} />
-        <MapPoints items={mapPoints} toneFor={(item) => statusTone(item.schedule.status)}>
-          {(item) => (
-            <div className="min-w-[12rem]">
-              <p className="font-bold text-navy-900">{item.schedule.title}</p>
-              <p className="text-xs text-navy-500">{item.label}</p>
-              <p className="mt-1 text-xs text-navy-600">{formatDateTime(item.schedule.startAt)}</p>
-              {item.schedule.status ? (
-                <Badge tone={statusTone(item.schedule.status)} size="sm" className="mt-2">
-                  {humanize(item.schedule.status)}
-                </Badge>
-              ) : null}
-            </div>
-          )}
-        </MapPoints>
+        {/* Grown by the radius so a whole coverage circle sits inside the fitted view. */}
+        <FitPoints items={mapPoints} radiusFor={(point) => point.schedule?.radius} />
+
+        {circlePoints.map((point) => (
+          <MapCircle
+            key={point.id}
+            center={point}
+            radius={Number(point.schedule.radius)}
+            color={PIN_COLORS[statusTone(point.schedule.status)]}
+            fillOpacity={0.12}
+          >
+            {renderMapPopup(point)}
+          </MapCircle>
+        ))}
+
+        {/* Fallback only: a location with no usable radius keeps its pin. */}
+        {pinPoints.length ? (
+          <MapPoints items={pinPoints} toneFor={(point) => statusTone(point.schedule.status)}>
+            {renderMapPopup}
+          </MapPoints>
+        ) : null}
+
         <MapLegend
           title="Status"
           items={[

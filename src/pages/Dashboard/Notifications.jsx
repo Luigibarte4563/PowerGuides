@@ -1,42 +1,77 @@
-import { useState } from 'react';
-import { Bell, BellOff, CheckCheck, CheckCircle2, RefreshCw } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Bell, BellOff, CheckCheck, RefreshCw, Search } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
 import Tabs from '@/components/ui/Tabs';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Card, CardBody } from '@/components/ui/Card';
-import DataView from '@/components/DataView';
-import RecordCard from '@/components/RecordCard';
+import NotificationCard from '@/components/NotificationCard';
+import NotificationDetailModal from '@/components/NotificationDetailModal';
+import NotificationTimeline from '@/components/NotificationTimeline';
 import { useToast } from '@/context/ToastContext';
+import { useReference } from '@/context/ReferenceContext';
 import {
   useMarkAllAsRead,
   useMarkAsRead,
-  useNotifications,
+  useNotificationsHistory,
 } from '@/hooks/useNotifications';
-import { formatDateTime, formatRelativeTime, humanize } from '@/utils/formatters';
+import { filterNotifications, groupByDay } from '@/utils/notifications';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { toUserMessage } from '@/utils/errorMessage';
 
-const TYPE_TONES = {
-  outage: 'danger',
-  outage_report: 'danger',
-  maintenance: 'info',
-  hazard: 'danger',
-  electrical_hazard: 'danger',
-  flood: 'info',
-  battery: 'success',
-  timer: 'primary',
-  system: 'navy',
-  info: 'navy',
-};
-
-/** Module E - notifications (current user only). */
+/**
+ * Module E - notification history (current user only).
+ *
+ * The list is a date-grouped timeline rather than a flat table, and the message is
+ * rendered in full: the previous card clamped it to two lines, which cut the
+ * maintenance copy - the one notification whose message actually carries the
+ * information - to a fragment with no way to see the rest.
+ */
 export default function Notifications() {
   const [tab, setTab] = useState('all');
+  const [type, setType] = useState('');
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(null);
+  const [markingId, setMarkingId] = useState(null);
   const toast = useToast();
-  const { notifications, unreadCount, isLoading, isFetching, isError, error, refetch } = useNotifications({ limit: 100 });
+  const { notificationTypes } = useReference();
+
+  // Debounced so a keystroke does not re-filter the whole loaded history per character.
+  const debouncedSearch = useDebouncedValue(search, 250);
+
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    isError,
+    error,
+    refetch,
+  } = useNotificationsHistory({ pageSize: 25 });
+
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
 
-  const items = tab === 'unread' ? notifications.filter((item) => !item.isRead) : notifications;
+  const visible = useMemo(
+    () => filterNotifications(notifications, { query: debouncedSearch, type, tab }),
+    [notifications, debouncedSearch, type, tab]
+  );
+
+  const groups = useMemo(() => groupByDay(visible), [visible]);
+
+  const handleMarkRead = async (notification) => {
+    setMarkingId(notification.id);
+    try {
+      await markAsRead.mutateAsync(notification.id);
+    } catch (markError) {
+      toast.error(toUserMessage(markError, 'We could not mark that notification as read.'));
+    } finally {
+      setMarkingId(null);
+    }
+  };
 
   const handleMarkAll = async () => {
     try {
@@ -47,19 +82,24 @@ export default function Notifications() {
     }
   };
 
+  const renderItem = (notification) => (
+    <NotificationCard
+      notification={notification}
+      onView={setSelected}
+      onMarkRead={handleMarkRead}
+      isMarking={markingId !== null && markingId === notification.id}
+      markReadDisabled={markAsRead.isPending}
+    />
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Notifications"
-        description="Updates about outages, maintenance, hazards and your own reports."
+        description="Everything sent to your account, newest first, grouped by day."
         actions={
           <>
-            <Button
-              variant="ghost"
-              icon={RefreshCw}
-              loading={isFetching}
-              onClick={() => refetch()}
-            >
+            <Button variant="ghost" icon={RefreshCw} loading={isLoading} onClick={() => refetch()}>
               Refresh
             </Button>
             <Button
@@ -74,6 +114,27 @@ export default function Notifications() {
           </>
         }
       />
+
+      <Card>
+        <CardBody className="grid gap-3 sm:grid-cols-2">
+          <Input
+            label="Search"
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search titles and messages"
+            hint="Filters the notifications loaded so far."
+          />
+          <Select
+            label="Type"
+            options={notificationTypes}
+            placeholder="All types"
+            value={type}
+            onChange={(event) => setType(event.target.value)}
+            hint="Filters the notifications loaded so far."
+          />
+        </CardBody>
+      </Card>
 
       <Tabs
         tabs={[
@@ -103,55 +164,38 @@ export default function Notifications() {
         </Card>
       ) : null}
 
-      <DataView
+      <NotificationTimeline
+        groups={groups}
         isLoading={isLoading}
-        error={isError}
-        errorMessage={toUserMessage(error)}
+        error={isError ? error : null}
         onRetry={() => refetch()}
         loadingLabel="Loading your notifications…"
-        items={items}
+        hasMore={hasNextPage}
+        isFetchingMore={isFetchingNextPage}
+        onLoadMore={() => fetchNextPage()}
+        loadedCount={notifications.length}
+        renderItem={renderItem}
         empty={{
-          icon: tab === 'unread' ? BellOff : Bell,
-          title: tab === 'unread' ? 'Nothing unread' : 'No notifications yet',
-          description:
-            tab === 'unread'
+          icon: debouncedSearch || type ? Search : tab === 'unread' ? BellOff : Bell,
+          title: debouncedSearch || type
+            ? 'No notifications match'
+            : tab === 'unread'
+              ? 'Nothing unread'
+              : 'No notifications yet',
+          description: debouncedSearch || type
+            ? 'Try a different search term or type, or load older notifications.'
+            : tab === 'unread'
               ? 'You are all caught up. New alerts will appear here.'
               : 'When an outage near you is reported or resolved, you will be notified here.',
         }}
-        renderCard={(notification) => (
-          <RecordCard
-            icon={notification.isRead ? CheckCircle2 : Bell}
-            iconTone={notification.isRead ? 'navy' : (TYPE_TONES[notification.type] || 'primary')}
-            title={notification.title || humanize(notification.type, 'Update')}
-            subtitle={`${humanize(notification.type, 'Update')} · ${formatRelativeTime(notification.createdAt)}`}
-            badges={
-              notification.isRead
-                ? [{ label: 'Read', tone: 'neutral' }]
-                : [{ label: 'Unread', tone: 'primary' }]
-            }
-            description={notification.message}
-            footer={<span className="text-xs text-navy-400">{formatDateTime(notification.createdAt)}</span>}
-            actions={
-              !notification.isRead ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  icon={CheckCheck}
-                  loading={markAsRead.isPending && markAsRead.variables === notification.id}
-                  onClick={async () => {
-                    try {
-                      await markAsRead.mutateAsync(notification.id);
-                    } catch (markError) {
-                      toast.error(toUserMessage(markError, 'We could not mark that notification as read.'));
-                    }
-                  }}
-                >
-                  Mark as read
-                </Button>
-              ) : null
-            }
-          />
-        )}
+      />
+
+      <NotificationDetailModal
+        notification={selected}
+        open={selected !== null}
+        onClose={() => setSelected(null)}
+        onMarkRead={handleMarkRead}
+        isMarking={markingId !== null && markingId === selected?.id}
       />
     </div>
   );

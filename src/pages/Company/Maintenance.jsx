@@ -11,7 +11,7 @@ import { TBody, TD, TH, THead, TR, Table } from '@/components/ui/Table';
 import DataView from '@/components/DataView';
 import RecordCard from '@/components/RecordCard';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import AppMap, { FitPoints, MapLegend, MapPoints, RadiusCircle } from '@/components/Map';
+import AppMap, { FitPoints, MapCircle, MapLegend, MapPoints, PIN_COLORS } from '@/components/Map';
 import MapWorkspace from '@/components/MapWorkspace';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
@@ -135,6 +135,38 @@ export default function Maintenance() {
     });
   }, [mapQuery.data, mapStatus]);
 
+  /**
+   * Coverage is a CIRCLE per affected barangay, not a pin.
+   *
+   * `maintenance_schedules.radius` belongs to the schedule, and one schedule can cover
+   * several barangays - so it has to be drawn at every one of them. This used to
+   * render a single `RadiusCircle` at `mapPoints[0]`, which put one circle on whichever
+   * barangay happened to sort first and left every other affected area as a bare pin.
+   *
+   * `radius` is a nullable column, so a location without one falls back to the pin
+   * rather than disappearing from the map entirely.
+   */
+  const hasRadius = (point) => Number(point.radius) > 0;
+  const circlePoints = mapPoints.filter(hasRadius);
+  const pinPoints = mapPoints.filter((point) => !hasRadius(point));
+
+  const renderMapPopup = (point) => (
+    <div className="min-w-[13rem]">
+      <p className="font-bold text-navy-900">{point.title || 'Maintenance'}</p>
+      <p className="mt-0.5 text-xs text-navy-500">
+        {point.barangay} · {formatDate(point.date)}
+      </p>
+      {hasRadius(point) ? (
+        <p className="mt-1 text-xs text-navy-600">
+          Notify radius {formatDistance(point.radius)}
+        </p>
+      ) : null}
+      <Badge tone={statusTone(point.status)} size="sm" className="mt-2">
+        {humanize(point.status)}
+      </Badge>
+    </div>
+  );
+
   const maintenanceMap =
     mapPoints.length === 0 ? (
       <p className="h-full overflow-y-auto p-8 text-center text-sm text-navy-500">
@@ -144,30 +176,32 @@ export default function Maintenance() {
       </p>
     ) : (
       <AppMap zoom={12} className="h-full w-full">
-        <FitPoints items={mapPoints} />
-        {mapPoints[0] ? <RadiusCircle center={mapPoints[0]} radius={mapPoints[0].radius} color="#D97706" /> : null}
-        <MapPoints
-          items={mapPoints}
-          toneFor={(point) => (point.status === 'ongoing' ? 'warning' : 'primary')}
-          glyphFor={() => 'M'}
-        >
-          {(point) => (
-            <div className="min-w-[13rem]">
-              <p className="font-bold text-navy-900">{point.title || 'Maintenance'}</p>
-              <p className="mt-0.5 text-xs text-navy-500">
-                {point.barangay} · {formatDate(point.date)}
-              </p>
-              {point.radius ? (
-                <p className="mt-1 text-xs text-navy-600">
-                  Notify radius {formatDistance(point.radius)}
-                </p>
-              ) : null}
-              <Badge tone={statusTone(point.status)} size="sm" className="mt-2">
-                {humanize(point.status)}
-              </Badge>
-            </div>
-          )}
-        </MapPoints>
+        {/* Grown by the radius so a whole coverage circle sits inside the fitted view. */}
+        <FitPoints items={mapPoints} radiusFor={(point) => point.radius} />
+
+        {circlePoints.map((point) => (
+          <MapCircle
+            key={`circle-${point.id}`}
+            center={point}
+            radius={Number(point.radius)}
+            color={PIN_COLORS[point.status === 'ongoing' ? 'warning' : 'primary']}
+            fillOpacity={0.12}
+          >
+            {renderMapPopup(point)}
+          </MapCircle>
+        ))}
+
+        {/* Fallback only: a location with no usable radius keeps its pin. */}
+        {pinPoints.length ? (
+          <MapPoints
+            items={pinPoints}
+            toneFor={(point) => (point.status === 'ongoing' ? 'warning' : 'primary')}
+            glyphFor={() => 'M'}
+          >
+            {renderMapPopup}
+          </MapPoints>
+        ) : null}
+
         <MapLegend
           title="Status"
           items={[

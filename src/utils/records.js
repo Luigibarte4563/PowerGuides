@@ -6,6 +6,7 @@
  * through the `read*` helpers so a small column rename only needs editing here.
  */
 import { distanceInMeters, hasCoordinates, readField, toNumber } from './formatters';
+import { clampMaintenanceRadius, MAINTENANCE_RADIUS_METERS } from './constants';
 
 /** TODO(API-CONFIRM): primary key per table (all rows expose `id`). */
 export function readId(record) {
@@ -168,9 +169,10 @@ export const readMaintenance = (record) => {
       lng: toNumber(readField(location, ['lng', 'longitude'], null), null),
     }))
     .filter((location) => location.barangay);
-  const located = locations.filter(
-    (location) => Number.isFinite(location.lat) && Number.isFinite(location.lng)
-  );
+  // `hasCoordinates`, not a bare isFinite: a location whose lat/lng columns are NULL
+  // now reads as null (see `toNumber`), and one that still lands on (0, 0) is Null
+  // Island - either would plot in the Gulf of Guinea and drag the map fit out to sea.
+  const located = locations.filter((location) => hasCoordinates(location.lat, location.lng));
 
   const date = readField(record, ['maintenance_date'], '');
   const start = readField(record, ['start_time'], '');
@@ -187,7 +189,12 @@ export const readMaintenance = (record) => {
     endTime: end,
     startAt: combineDateTime(date, start),
     endAt: combineDateTime(date, end),
-    radius: toNumber(readField(record, ['radius'], null), null),
+    // Clamped on read, not just on write: `maintenance_schedules.radius` is
+    // `int NULL DEFAULT 2000`, so rows predating the 500 m ceiling still hold 2000 and
+    // would otherwise draw a circle covering most of Dagupan. This is the single place
+    // every consumer reads from - the circle radius, the popup, the table column and
+    // the company badge - so clamping here fixes all of them at once.
+    radius: clampMaintenanceRadius(readField(record, ['radius'], MAINTENANCE_RADIUS_METERS)),
     description: readField(record, ['description'], ''),
     locations,
     located,

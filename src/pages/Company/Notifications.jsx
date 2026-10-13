@@ -1,17 +1,25 @@
-import { useState } from 'react';
-import { Bell, CheckCheck, Inbox, MailOpen, RefreshCw, Send } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Bell, CheckCheck, Inbox, MailOpen, RefreshCw, Search, Send } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
 import Tabs from '@/components/ui/Tabs';
-import Badge from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import DataView from '@/components/DataView';
-import RecordCard from '@/components/RecordCard';
+import NotificationCard from '@/components/NotificationCard';
+import NotificationDetailModal from '@/components/NotificationDetailModal';
+import NotificationTimeline from '@/components/NotificationTimeline';
+import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 import { useReference } from '@/context/ReferenceContext';
-import { useMarkAllAsRead, useMarkAsRead, useNotifications } from '@/hooks/useNotifications';
-import { formatDateTime, formatRelativeTime, humanize } from '@/utils/formatters';
+import {
+  useMarkAllAsRead,
+  useMarkAsRead,
+  useNotificationsHistory,
+} from '@/hooks/useNotifications';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { filterNotifications, groupByDay } from '@/utils/notifications';
+import { toUserMessage } from '@/utils/errorMessage';
 import NotificationComposeModal from './components/NotificationComposeModal';
 
 const TABS = [
@@ -21,33 +29,73 @@ const TABS = [
 ];
 
 /**
- * Module NOT - notifications (FR-NOT-1, FR-NOT-2, FR-NOT-3, FR-NOT-4).
+ * Module NOT - staff inbox + broadcast composer (FR-NOT-1 … FR-NOT-5).
  *
  * This is the signed-in staff member's own inbox (`notification/get.php` is
  * user-scoped with no role check), which is a different thing from the resident
  * broadcast the company sends - the two are kept apart deliberately so a broadcast is
  * never mistaken for an internal update.
  *
- * `notification/get.php` returns `total` as the PAGE size, not a grand total, so
- * there is no "page 2 of N" to show and the list is simply the newest 50.
+ * Shares the history components with the resident app: `get.php` reports `total` as
+ * the PAGE size, so both screens page with "Load more" instead of page numbers, and
+ * both render the message in full rather than clamped to two lines.
  */
 export default function Notifications() {
   const { isManager } = useAuth();
   const { notificationTypes } = useReference();
-  const { notifications, unreadCount, isLoading, isFetching, isError, refetch } = useNotifications({ limit: 50 });
-  const markAsRead = useMarkAsRead();
-  const markAll = useMarkAllAsRead();
+  const toast = useToast();
 
   const [tab, setTab] = useState('all');
   const [type, setType] = useState('');
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(null);
+  const [markingId, setMarkingId] = useState(null);
   const [composeOpen, setComposeOpen] = useState(false);
 
-  const visible = notifications.filter((notification) => {
-    if (tab === 'unread') return !notification.isRead;
-    if (tab === 'read') return notification.isRead;
-    if (type) return String(notification.type ?? '').toLowerCase() === type.toLowerCase();
-    return true;
-  });
+  const debouncedSearch = useDebouncedValue(search, 250);
+
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    isError,
+    error,
+    refetch,
+  } = useNotificationsHistory({ pageSize: 25 });
+
+  const markAsRead = useMarkAsRead();
+  const markAll = useMarkAllAsRead();
+
+  const visible = useMemo(
+    () => filterNotifications(notifications, { query: debouncedSearch, type, tab }),
+    [notifications, debouncedSearch, type, tab]
+  );
+
+  const groups = useMemo(() => groupByDay(visible), [visible]);
+
+  const handleMarkRead = async (notification) => {
+    setMarkingId(notification.id);
+    try {
+      await markAsRead.mutateAsync(notification.id);
+    } catch (markError) {
+      toast.error(toUserMessage(markError, 'We could not mark that notification as read.'));
+    } finally {
+      setMarkingId(null);
+    }
+  };
+
+  const renderItem = (notification) => (
+    <NotificationCard
+      notification={notification}
+      onView={setSelected}
+      onMarkRead={handleMarkRead}
+      isMarking={markingId !== null && markingId === notification.id}
+      markReadDisabled={markAsRead.isPending}
+    />
+  );
 
   return (
     <div className="space-y-6">
@@ -56,21 +104,10 @@ export default function Notifications() {
         description="Your inbox, and the broadcast composer for resident updates."
         actions={
           <>
-            <Button
-              variant="ghost"
-              icon={RefreshCw}
-              loading={isFetching}
-              onClick={() => refetch()}
-            >
+            <Button variant="ghost" icon={RefreshCw} loading={isLoading} onClick={() => refetch()}>
               Refresh
             </Button>
-            <Button
-              variant="outline"
-              icon={CheckCheck}
-              onClick={() => markAll.mutate()}
-              loading={markAll.isPending}
-              disabled={unreadCount === 0}
-            >
+            <Button variant="outline" icon={CheckCheck} onClick={() => markAll.mutate()} loading={markAll.isPending} disabled={unreadCount === 0}>
               Mark all read
             </Button>
             {isManager ? (
@@ -93,6 +130,27 @@ export default function Notifications() {
         </Card>
       ) : null}
 
+      <Card>
+        <CardBody className="grid gap-3 sm:grid-cols-2">
+          <Input
+            label="Search"
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search titles and messages"
+            hint="Filters the notifications loaded so far."
+          />
+          <Select
+            label="Type"
+            options={notificationTypes}
+            placeholder="All types"
+            value={type}
+            onChange={(event) => setType(event.target.value)}
+            hint="Filters the notifications loaded so far."
+          />
+        </CardBody>
+      </Card>
+
       <Tabs
         tabs={TABS.map((item) => ({
           ...item,
@@ -103,69 +161,39 @@ export default function Notifications() {
         ariaLabel="Notification filter"
       />
 
-      <Card>
-        <CardBody className="grid gap-3 sm:grid-cols-2">
-          <Select
-            label="Type"
-            options={notificationTypes}
-            placeholder="All types"
-            value={type}
-            onChange={(event) => setType(event.target.value)}
-            disabled={tab !== 'all'}
-            hint={tab !== 'all' ? 'Fixed by the selected tab.' : undefined}
-          />
-        </CardBody>
-      </Card>
-
-      <DataView
+      <NotificationTimeline
+        groups={groups}
         isLoading={isLoading}
-        error={isError}
+        error={isError ? error : null}
         onRetry={() => refetch()}
         loadingLabel="Loading notifications…"
-        items={visible}
+        hasMore={hasNextPage}
+        isFetchingMore={isFetchingNextPage}
+        onLoadMore={() => fetchNextPage()}
+        loadedCount={notifications.length}
+        renderItem={renderItem}
         empty={{
-          icon: Inbox,
-          title:
-            tab === 'unread'
+          icon: debouncedSearch || type ? Search : Inbox,
+          title: debouncedSearch || type
+            ? 'No notifications match'
+            : tab === 'unread'
               ? 'Nothing unread'
               : tab === 'read'
                 ? 'No read notifications yet'
                 : 'No notifications yet',
-          description: 'Outage, maintenance, hazard and flood updates for your account land here.',
+          description: debouncedSearch || type
+            ? 'Try a different search term or type, or load older notifications.'
+            : 'Outage, maintenance, hazard and flood updates for your account land here.',
         }}
-        renderCard={(notification) => (
-          <RecordCard
-            icon={Bell}
-            iconTone={notification.isRead ? 'navy' : 'primary'}
-            title={notification.title || 'Notification'}
-            subtitle={`${humanize(notification.type, 'Update')} · ${formatRelativeTime(notification.createdAt)}`}
-            badges={[
-              notification.isRead ? null : { label: 'Unread', tone: 'info' },
-              { label: humanize(notification.type, 'Update'), tone: 'neutral' },
-            ]}
-            description={notification.message}
-            meta={[{ label: 'Sent', value: formatDateTime(notification.createdAt) }]}
-            actions={
-              notification.isRead ? null : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  icon={CheckCheck}
-                  loading={markAsRead.isPending}
-                  onClick={() => markAsRead.mutate(notification.id)}
-                >
-                  Mark as read
-                </Button>
-              )
-            }
-          />
-        )}
       />
 
-      <p className="text-xs text-navy-400">
-        Showing the {notifications.length} most recent notifications. The API caps the page at 50
-        and reports the page size as its total.
-      </p>
+      <NotificationDetailModal
+        notification={selected}
+        open={selected !== null}
+        onClose={() => setSelected(null)}
+        onMarkRead={handleMarkRead}
+        isMarking={markingId !== null && markingId === selected?.id}
+      />
 
       <NotificationComposeModal open={composeOpen} onClose={() => setComposeOpen(false)} />
     </div>
