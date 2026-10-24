@@ -216,7 +216,7 @@ export default function Floods() {
         }
       >
 
-      <Card>
+      <Card className="card-hover">
         <CardBody className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Input
             label="Search"

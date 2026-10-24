@@ -176,7 +176,7 @@ export default function Hazards() {
         }
       >
 
-      <Card>
+      <Card className="card-hover">
         <CardBody className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <Input
             label="Search"

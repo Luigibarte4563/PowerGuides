@@ -192,7 +192,7 @@ export default function Maintenance() {
           </Button>
         }
       >
-          <Card>
+          <Card className="card-hover">
             <CardBody className="grid gap-3 sm:grid-cols-3">
               <Input
                 label="Search"

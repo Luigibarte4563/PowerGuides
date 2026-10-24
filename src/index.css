@@ -2,6 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============= Custom UI/UX Layout Styles (from Outage Map layout) ============= */
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0D0E2A;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #31324C;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #555;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #31324C transparent;
+}
+
+/* Card hover effect */
+.card-hover {
+    transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+    transform: translateY(-2px);
+}
+
+/* Leaflet popup styles */
+.leaflet-popup-content-wrapper {
+    background: #1A1B33;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.leaflet-popup-tip {
+    background: #1A1B33;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+    color: #fff;
+}
+
+/* Leaflet layer filtering - invert for dark mode, keep markers intact */
+.leaflet-layer,
+.leaflet-container {
+    filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+.leaflet-pane .leaflet-marker-pane,
+.leaflet-pane .leaflet-overlay-pane {
+    filter: none !important;
+}
+
+/* ============================================ */
+
 /*
  * Dark theme.
  *
@@ -52,10 +114,8 @@
     @apply text-navy-300;
   }
 
-  /*
-   * Native `<option>` lists are painted by the browser, not by Tailwind classes,
-   * so they need an explicit dark background or they render as white-on-white.
-   */
+  /* Native `<option>` lists are painted by the browser, not by Tailwind classes,
+   * so they need an explicit dark background or they render as white-on-white. */
   [data-theme='dark'] option {
     @apply bg-navy-800 text-navy-100;
   }
@@ -74,8 +134,7 @@
     @apply text-navy-600 dark:text-navy-300;
   }
 
-  /*
-   * Sidebar nav scrollbar, tinted into the navy panel so it reads as part of the
+  /* Sidebar nav scrollbar, tinted into the navy panel so it reads as part of the
    * menu instead of a light browser scrollbar sitting on dark navy. The track is
    * transparent so the thumb appears to float on navy-900. The nav is kept
    * scrollable (rather than clipping) so links stay reachable on short windows.

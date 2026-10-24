@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Flame, Layers, Save, Search, Waves } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
@@ -246,7 +246,7 @@ export default function MapRisk() {
             </AppMap>
           </div>
 
-          <Card>
+          <Card className=" card-hover\
             <CardHeader description="Each layer loads on the server as soon as the page opens, and is drawn only while switched on.">
               Layer controls
             </CardHeader>
@@ -301,7 +301,7 @@ export default function MapRisk() {
         </div>
 
         <div className="space-y-6">
-          <Card>
+          <Card className=" card-hover\
             <CardHeader description="Drop a point to see combined flood and hazard risk around it.">
               <span className="inline-flex items-center gap-2">
                 <Search className="h-4 w-4 text-primary-600" aria-hidden="true" />
@@ -341,7 +341,7 @@ export default function MapRisk() {
                   Pick a point on the map to run a risk query against it.
                 </p>
               ) : riskQuery.isLoading ? (
-                <LoadingState label="Checking risk…" />
+                <LoadingState label="Checking riskâ€¦" />
               ) : riskQuery.isError ? (
                 <InfoNote>{toUserMessage(riskQuery.error, 'The risk lookup failed.')}</InfoNote>
               ) : (
@@ -372,9 +372,9 @@ export default function MapRisk() {
                           <li key={`${item.kind}-${item.id}`} className="rounded-control border border-navy-100 p-3">
                             <p className="text-sm font-semibold text-navy-900">{item.label}</p>
                             <p className="mt-0.5 text-xs text-navy-500">
-                              {item.kind === 'flood' ? 'Flood' : 'Hazard'} ·{' '}
-                              {humanize(item.severity, 'unrated')} · {item.barangay || 'unknown area'}
-                              {Number.isFinite(risk.distance) ? ` · ${formatDistance(risk.distance)}` : ''}
+                              {item.kind === 'flood' ? 'Flood' : 'Hazard'} Â·{' '}
+                              {humanize(item.severity, 'unrated')} Â· {item.barangay || 'unknown area'}
+                              {Number.isFinite(risk.distance) ? ` Â· ${formatDistance(risk.distance)}` : ''}
                             </p>
                           </li>
                         );
@@ -386,7 +386,7 @@ export default function MapRisk() {
             </CardBody>
           </Card>
 
-          <Card>
+          <Card className=" card-hover\
             <CardHeader description="Persist a cluster centred on the probed point.">
               Save a cluster
             </CardHeader>
@@ -446,11 +446,11 @@ export default function MapRisk() {
             </CardBody>
           </Card>
 
-          <Card>
+          <Card className=" card-hover\
             <CardHeader>Stored clusters ({clusters.length})</CardHeader>
             <CardBody>
               {clusterQuery.isLoading ? (
-                <LoadingState label="Loading clusters…" />
+                <LoadingState label="Loading clustersâ€¦" />
               ) : clusters.length === 0 ? (
                 <p className="text-sm text-navy-500">
                   No stored clusters yet. Save one above and it will appear here and on the map.
@@ -465,9 +465,9 @@ export default function MapRisk() {
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-navy-900">{cluster.label}</p>
                         <p className="text-xs text-navy-500">
-                          {cluster.count} report{cluster.count === 1 ? '' : 's'} ·{' '}
+                          {cluster.count} report{cluster.count === 1 ? '' : 's'} Â·{' '}
                           {cluster.radiusMeters ? formatDistance(cluster.radiusMeters) : 'no radius'}
-                          {cluster.clusterDate ? ` · ${formatDate(cluster.clusterDate)}` : ''}
+                          {cluster.clusterDate ? ` Â· ${formatDate(cluster.clusterDate)}` : ''}
                         </p>
                       </div>
                       {cluster.forecastLevel ? (
@@ -500,12 +500,12 @@ function ClusterPopup({ cluster }) {
     <div className="min-w-[13rem]">
       <p className="font-bold text-navy-900">{cluster.label}</p>
       <p className="mt-0.5 text-xs text-navy-500">
-        {cluster.count} report{cluster.count === 1 ? '' : 's'} ·{' '}
+        {cluster.count} report{cluster.count === 1 ? '' : 's'} Â·{' '}
         {cluster.radiusMeters ? formatDistance(cluster.radiusMeters) : 'no radius'}
       </p>
       {cluster.barangay || cluster.clusterDate ? (
         <p className="mt-1 text-xs text-navy-600">
-          {[cluster.barangay, formatDate(cluster.clusterDate)].filter(Boolean).join(' · ')}
+          {[cluster.barangay, formatDate(cluster.clusterDate)].filter(Boolean).join(' Â· ')}
         </p>
       ) : null}
       {cluster.forecastLevel ? (
@@ -522,7 +522,7 @@ function RiskPopup({ item }) {
     <div className="min-w-[13rem]">
       <p className="font-bold text-navy-900">{item.label}</p>
       <p className="mt-0.5 text-xs text-navy-500">
-        {item.kind === 'flood' ? 'Flood report' : 'Electrical hazard'} ·{' '}
+        {item.kind === 'flood' ? 'Flood report' : 'Electrical hazard'} Â·{' '}
         {humanize(item.severity, 'unrated')}
       </p>
       {item.barangay ? <p className="mt-1 text-xs text-navy-600">{item.barangay}</p> : null}
