@@ -45,9 +45,12 @@ export default function ConfirmDialog({
       }
     >
       <div className="space-y-3">
-        <p className="text-sm text-navy-600">{description}</p>
+        <p className="text-sm text-navy-600 dark:text-navy-300">{description}</p>
         {error || localError ? (
-          <p role="alert" className="rounded-control bg-danger-50 p-3 text-sm font-medium text-danger-700">
+          <p
+            role="alert"
+            className="rounded-control bg-danger-50 p-3 text-sm font-medium text-danger-700 dark:bg-danger-600/15 dark:text-danger-200"
+          >
             {error || localError}
           </p>
         ) : null}

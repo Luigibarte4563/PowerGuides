@@ -105,7 +105,7 @@ export default function TruncateText({
           to={to}
           ref={ref}
           className={clsx(
-            'block rounded font-semibold text-navy-900 hover:text-primary-600',
+            'block rounded font-semibold text-navy-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400',
             sharedTextClass,
             linkClassName
           )}

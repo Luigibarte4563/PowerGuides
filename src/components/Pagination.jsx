@@ -20,15 +20,15 @@ export default function Pagination({ page, pageCount, total, pageSize, onChange,
   return (
     <nav
       className={clsx(
-        'flex flex-wrap items-center justify-between gap-3 border-t border-navy-100 px-4 py-3',
+        'flex flex-wrap items-center justify-between gap-3 border-t border-navy-100 px-4 py-3 dark:border-navy-700',
         className
       )}
       aria-label="Pagination"
     >
-      <p className="text-xs text-navy-500" aria-live="polite">
-        Showing <span className="font-semibold text-navy-700">{from}</span>–
-        <span className="font-semibold text-navy-700">{to}</span> of{' '}
-        <span className="font-semibold text-navy-700">{total}</span>
+      <p className="text-xs text-navy-500 dark:text-navy-400" aria-live="polite">
+        Showing <span className="font-semibold text-navy-700 dark:text-navy-200">{from}</span>–
+        <span className="font-semibold text-navy-700 dark:text-navy-200">{to}</span> of{' '}
+        <span className="font-semibold text-navy-700 dark:text-navy-200">{total}</span>
       </p>
 
       <div className="flex items-center gap-1.5">
@@ -36,20 +36,20 @@ export default function Pagination({ page, pageCount, total, pageSize, onChange,
           type="button"
           onClick={() => onChange(current - 1)}
           disabled={current <= 1}
-          className="inline-flex h-9 items-center gap-1 rounded-control border border-navy-200 bg-white px-2.5 text-xs font-semibold text-navy-700 transition hover:bg-navy-50 disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex h-9 items-center gap-1 rounded-control border border-navy-200 bg-white px-2.5 text-xs font-semibold text-navy-700 transition hover:bg-navy-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-navy-600 dark:bg-navy-800 dark:text-navy-200 dark:hover:bg-navy-700"
           aria-label="Previous page"
         >
           <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
           Previous
         </button>
-        <span className="px-1 text-xs font-semibold text-navy-600" aria-current="page">
+        <span className="px-1 text-xs font-semibold text-navy-600 dark:text-navy-300" aria-current="page">
           Page {current} of {pages}
         </span>
         <button
           type="button"
           onClick={() => onChange(current + 1)}
           disabled={current >= pages}
-          className="inline-flex h-9 items-center gap-1 rounded-control border border-navy-200 bg-white px-2.5 text-xs font-semibold text-navy-700 transition hover:bg-navy-50 disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex h-9 items-center gap-1 rounded-control border border-navy-200 bg-white px-2.5 text-xs font-semibold text-navy-700 transition hover:bg-navy-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-navy-600 dark:bg-navy-800 dark:text-navy-200 dark:hover:bg-navy-700"
           aria-label="Next page"
         >
           Next

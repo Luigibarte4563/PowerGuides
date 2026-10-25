@@ -7,21 +7,24 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Electric amber - primary brand colour (Section 3.5)
+        // Electric amber - primary brand colour (Section 3.5).
+        // Tuned to the Outages workspace palette: #FFBB02 base, #FFD400 hover.
         primary: {
           50: '#FFFBEB',
           100: '#FEF3C7',
           200: '#FDE68A',
           300: '#FCD34D',
-          400: '#FBBF24',
-          500: '#F59E0B',
-          600: '#D97706',
+          400: '#FFD400',
+          500: '#FFBB02',
+          600: '#E0A802',
           700: '#B45309',
           800: '#92400E',
           900: '#78350F',
           950: '#451A03',
         },
-        // Dark navy - text, sidebar, headers
+        // Dark navy - text, sidebar, headers.
+        // High stops follow the Outages workspace: #03041A canvas, #0B0D20
+        // topbar, #1C1D30 card surface, #31324C panel tint.
         navy: {
           50: '#F4F6FA',
           100: '#E4E9F2',
@@ -29,51 +32,54 @@ export default {
           300: '#9CAAC4',
           400: '#6C7C9B',
           500: '#4A5A78',
-          600: '#33415C',
-          700: '#223049',
-          800: '#16233B',
-          900: '#101B2D',
-          950: '#0A1220',
+          600: '#3D3F5C',
+          700: '#31324C',
+          800: '#1C1D30',
+          900: '#0B0D20',
+          950: '#03041A',
         },
-        // Status colours
+        // Status colours - keyed to the Outages workspace accents:
+        // success #34FB34, warning #FFBB02 (the amber), danger #FF2E1F, info #22D3EE.
         success: {
-          50: '#ECFDF5',
-          100: '#D1FAE5',
-          200: '#A7F3D0',
-          500: '#10B981',
-          600: '#059669',
-          700: '#047857',
+          50: '#EFFEF0',
+          100: '#D9FEDC',
+          200: '#B4FEB9',
+          500: '#34FB34',
+          600: '#2BD62B',
+          700: '#1FA31F',
         },
         warning: {
-          50: '#FFFBEB',
-          100: '#FEF3C7',
-          200: '#FDE68A',
-          500: '#F59E0B',
-          600: '#D97706',
-          700: '#B45309',
+          50: '#FFF8E0',
+          100: '#FFEFB8',
+          200: '#FFE585',
+          500: '#FFBB02',
+          600: '#E0A802',
+          700: '#B48602',
         },
         danger: {
-          50: '#FEF2F2',
-          100: '#FEE2E2',
-          200: '#FECACA',
-          500: '#EF4444',
-          600: '#DC2626',
-          700: '#B91C1C',
+          50: '#FFEDEA',
+          100: '#FFD6D2',
+          200: '#FFB9B2',
+          500: '#FF2E1F',
+          600: '#E0240F',
+          700: '#B31D0C',
         },
         info: {
-          50: '#EFF6FF',
-          100: '#DBEAFE',
-          200: '#BFDBFE',
-          500: '#3B82F6',
-          600: '#2563EB',
-          700: '#1D4ED8',
+          50: '#E9FBFE',
+          100: '#D2F6FD',
+          200: '#ABEFFB',
+          500: '#22D3EE',
+          600: '#14AECA',
+          700: '#0F8AA3',
         },
         // Neutrals
         canvas: '#F6F7F9',
         surface: '#FFFFFF',
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        // Montserrat is the app face (the Outages workspace standard).
+        sans: ['Montserrat', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        montserrat: ['Montserrat', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         card: '12px',
@@ -103,12 +109,17 @@ export default {
           from: { opacity: '0', transform: 'translateY(-8px) scale(0.98)' },
           to: { opacity: '1', transform: 'translateY(0) scale(1)' },
         },
+        'dialog-in': {
+          from: { opacity: '0', transform: 'translateY(10px) scale(0.96)' },
+          to: { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 150ms ease-out',
         'slide-up': 'slide-up 180ms ease-out',
         'slide-in-right': 'slide-in-right 180ms ease-out',
         'toast-in': 'toast-in 180ms ease-out',
+        'dialog-in': 'dialog-in 220ms ease-out',
       },
     },
   },

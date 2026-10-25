@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarClock, Crosshair, MapPin, Plus, Waves } from 'lucide-react';
-import PageHeader from '@/components/layout/PageHeader';
-import Tabs from '@/components/ui/Tabs';
+import { ZoomControl } from 'react-leaflet';
+import { AlertTriangle, CalendarClock, MapPin, Plus, Waves } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import DataView from '@/components/DataView';
 import RecordCard from '@/components/RecordCard';
@@ -18,7 +15,7 @@ import AppMap, {
   MapPoints,
   RadiusCircle,
 } from '@/components/Map';
-import MapWorkspace from '@/components/MapWorkspace';
+import MapWorkspace, { FeedActions, FeedPills, FeedToggle } from '@/components/MapWorkspace';
 import { useReference } from '@/context/ReferenceContext';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useSavedLocation } from '@/hooks/useSavedLocation';
@@ -26,7 +23,7 @@ import { floodsApi } from '@/api';
 import { QUERY_KEYS } from '@/utils/constants';
 import { readFlood, withDistance } from '@/utils/records';
 import { DEFAULT_RADIUS_METERS, RADIUS_OPTIONS, severityTone, statusTone } from '@/utils/constants';
-import { formatDateTime, formatDistance, humanize } from '@/utils/formatters';
+import { formatDateTime, formatDistance, formatTime, humanize } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
 import FloodFormModal, { FLOOD_LEVEL_OPTIONS } from './components/FloodFormModal';
 
@@ -108,7 +105,6 @@ export default function Floods() {
     () => items.filter((item) => Number.isFinite(item.lat) && Number.isFinite(item.lng)),
     [items]
   );
-  const unlocatedCount = items.length - plotted.length;
 
   // Frame the reports AND the saved point, so "you" is never off-screen.
   const framedPoints = useMemo(
@@ -123,14 +119,22 @@ export default function Floods() {
           isNearby ? ` within ${formatDistance(radius)} of you` : ' across Dagupan'
         }.`;
 
+  // Feed stat tiles, counted the same way the list filters do.
+  const highCount = items.filter((item) =>
+    ['high', 'severe'].includes(String(item.severity).toLowerCase())
+  ).length;
+  const barangayCount = new Set(items.map((item) => item.barangay).filter(Boolean)).size;
+
   const floodMap = (
     <AppMap
       // "Nearby" stays framed on the saved point; "All reports" lets FitPoints
       // frame every plotted report instead.
       center={isNearby && hasLocation ? coords : undefined}
       zoom={isNearby && hasLocation ? 14 : 13}
+      zoomControl={false}
       className="h-full w-full"
     >
+      <ZoomControl position="bottomright" />
       {isNearby ? null : <FitPoints items={framedPoints} />}
       {isNearby && hasLocation ? <RadiusCircle center={coords} radius={radius} /> : null}
       <MapPoints items={plotted} toneFor={(item) => (item.severity ? severityTone(item.severity) : 'neutral')}>
@@ -180,103 +184,88 @@ export default function Floods() {
 
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Flood Reports"
-        description="Report flooding in your area and see what is happening near you."
+    <div
+      data-theme="dark"
+      className="min-h-full bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
+      <FeedActions
         actions={
-          <Button variant="primary" icon={Plus} onClick={() => setFormOpen(true)}>
+          <Button
+            variant="primary"
+            icon={Plus}
+            onClick={() => setFormOpen(true)}
+            className="rounded-xl px-5 shadow-[0_8px_24px_rgba(255,187,2,0.18)]"
+          >
             Report Flood
           </Button>
         }
-      />
-
-      <Tabs
-        tabs={[
-          { value: 'all', label: 'All reports', icon: Waves },
-          { value: 'nearby', label: 'Nearby', icon: Crosshair },
-        ]}
-        value={tab}
-        onChange={setTab}
-        ariaLabel="Flood report filters"
+        search={search}
+        onSearchChange={setSearch}
+        onClearSearch={() => setSearch('')}
+        searchId="flood-search"
+        searchLabel="Search flood reports"
+        searchPlaceholder="Search location, barangay, description…"
       />
 
       <MapWorkspace
         map={floodMap}
-        mapTitle={isNearby ? 'Nearby flood map' : 'Flood map'}
-        mapDescription={mapSummary}
-        mapFooter={
-          unlocatedCount > 0 ? (
-            <p className="text-xs text-navy-500">
-              {unlocatedCount} report{unlocatedCount === 1 ? '' : 's'} in this list{' '}
-              {unlocatedCount === 1 ? 'has' : 'have'} no coordinates, so{' '}
-              {unlocatedCount === 1 ? 'it is' : 'they are'} listed but not plotted.
-            </p>
-          ) : null
-        }
-      >
-
-      <Card className="card-hover">
-        <CardBody className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Input
-            label="Search"
-            placeholder="Search reports"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
+        mapLabel="Flood map"
+        mapTitle="Live Flood Feed"
+        mapSubtitle={`${mapSummary}${activeQuery.dataUpdatedAt ? ` · updated ${formatTime(activeQuery.dataUpdatedAt)}` : ''}`}
+        toggle={
+          <FeedToggle
+            ariaLabel="Flood report scope"
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'all', label: 'All reports', count: (listQuery.data || []).length },
+              {
+                value: 'nearby',
+                label: 'Nearby',
+                count: nearbyQuery.data ? nearbyQuery.data.length : undefined,
+              },
+            ]}
           />
-          {isNearby ? (
+        }
+        stats={[
+          { label: 'Reports', value: items.length, icon: Waves, color: '#22D3EE' },
+          { label: 'High / severe', value: highCount, icon: AlertTriangle, color: '#FF2E1F' },
+          { label: 'Barangays', value: barangayCount, icon: MapPin, color: '#FFBB02' },
+        ]}
+        pills={
+          <FeedPills
+            ariaLabel="Filter by flood level"
+            value={severityFilter || 'all'}
+            onChange={(value) => setSeverityFilter(value === 'all' ? '' : value)}
+            options={[{ value: 'all', label: 'All' }, ...FLOOD_LEVEL_OPTIONS]}
+          />
+        }
+        filters={
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
             <Select
-              label="Radius"
-              options={RADIUS_OPTIONS}
-              value={String(radius)}
-              onChange={(event) => setRadius(Number(event.target.value))}
-              hint="Only reports inside this radius are listed and plotted."
-            />
-          ) : (
-            <Select
-              label="Barangay"
+              aria-label="Filter by barangay"
               placeholder="All barangays"
               options={barangays}
               value={barangayFilter}
               onChange={(event) => setBarangayFilter(event.target.value)}
+              className="h-9 py-0 text-xs"
             />
-          )}
-          {isNearby ? (
-            <Select
-              label="Barangay"
-              placeholder="All barangays"
-              options={barangays}
-              value={barangayFilter}
-              onChange={(event) => setBarangayFilter(event.target.value)}
-            />
-          ) : (
-            <Select
-              label="Flood level"
-              placeholder="All levels"
-              options={FLOOD_LEVEL_OPTIONS}
-              value={severityFilter}
-              onChange={(event) => setSeverityFilter(event.target.value)}
-            />
-          )}
-          <div className="flex items-end">
-            <Button
-              variant="outline"
-              fullWidth
-              onClick={() => {
-                setSearch('');
-                setBarangayFilter('');
-                setSeverityFilter('');
-              }}
-            >
-              Clear filters
-            </Button>
+            {isNearby ? (
+              <Select
+                aria-label="Search radius"
+                options={RADIUS_OPTIONS}
+                value={String(radius)}
+                onChange={(event) => setRadius(Number(event.target.value))}
+                className="h-9 py-0 text-xs"
+              />
+            ) : null}
           </div>
-        </CardBody>
-      </Card>
-
-
-
-      <DataView
+        }
+        plottedCount={plotted.length}
+        mapEmpty={!activeQuery.isLoading && !activeQuery.isError && plotted.length === 0}
+        mapEmptyLabel="No mapped flood reports yet"
+      >
+        <DataView
         isLoading={activeQuery.isLoading}
         error={activeQuery.isError}
         errorMessage={toUserMessage(activeQuery.error)}

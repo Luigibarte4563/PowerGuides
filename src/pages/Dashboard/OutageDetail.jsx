@@ -293,7 +293,9 @@ export default function OutageDetail() {
         </div>
       </div>
 
-      <OutageFormModal open={editOpen} outage={outage} onClose={() => setEditOpen(false)} />
+      {editOpen ? (
+        <OutageFormModal open outage={outage} onClose={() => setEditOpen(false)} />
+      ) : null}
 
       <ConfirmDialog
         open={deleteOpen}

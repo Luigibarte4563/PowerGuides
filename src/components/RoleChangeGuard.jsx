@@ -50,16 +50,16 @@ export default function RoleChangeGuard() {
   return (
     <div
       role="alert"
-      className="mb-6 flex flex-wrap items-start gap-3 rounded-card border border-warning-200 bg-warning-50 p-4 text-sm text-navy-800"
+      className="mb-6 flex flex-wrap items-start gap-3 rounded-card border border-warning-200 bg-warning-50 p-4 text-sm text-navy-800 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-navy-100"
     >
-      <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" aria-hidden="true" />
+      <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning-600 dark:text-warning-300" aria-hidden="true" />
       <div className="min-w-0 flex-1">
-        <p className="font-semibold text-navy-900">Your access may have changed</p>
-        <p className="mt-0.5 text-navy-700">
+        <p className="font-semibold text-navy-900 dark:text-white">Your access may have changed</p>
+        <p className="mt-0.5 text-navy-700 dark:text-navy-200">
           The server refused a request your account used to be allowed to make, so your role has
           probably been updated. Sign in again to pick up the new one.
         </p>
-        <p className="mt-1 text-xs text-navy-500">
+        <p className="mt-1 text-xs text-navy-500 dark:text-navy-400">
           Refused at <span className="font-mono">{notice.path}</span>. Until you sign in again,
           buttons on this page may not match what the API will accept.
         </p>

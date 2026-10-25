@@ -113,16 +113,16 @@ export default function BulkStatusDialog({
     >
       <div className="space-y-4">
         {isCityWide ? (
-          <div className="flex items-start gap-2.5 rounded-control border border-warning-200 bg-warning-50 p-3.5 text-sm text-navy-700">
-            <Globe2 className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" aria-hidden="true" />
+          <div className="flex items-start gap-2.5 rounded-control border border-warning-200 bg-warning-50 p-3.5 text-sm text-navy-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-navy-200">
+            <Globe2 className="mt-0.5 h-4 w-4 shrink-0 text-warning-600 dark:text-warning-300" aria-hidden="true" />
             <p>
               City-wide. There is no way to undo this in the app, and it is not limited to the reports
               currently filtered on screen.
             </p>
           </div>
         ) : (
-          <div className="flex items-start gap-2.5 rounded-control bg-navy-50 p-3.5 text-sm text-navy-700">
-            <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-navy-400" aria-hidden="true" />
+          <div className="flex items-start gap-2.5 rounded-control bg-navy-50 p-3.5 text-sm text-navy-700 dark:bg-navy-800 dark:text-navy-200">
+            <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-navy-400 dark:text-navy-500" aria-hidden="true" />
             <p>
               Barangay scope. The name is matched against the barangay list and the reports in it are all
               updated, whether or not they match your current filters.
@@ -152,9 +152,9 @@ export default function BulkStatusDialog({
           hint="These are the only statuses the API accepts for an update."
         />
 
-        <div className="rounded-control border border-navy-200 bg-canvas p-3.5">
-          <p className="text-sm font-semibold text-navy-900">Confirm the scope</p>
-          <ul className="mt-2 space-y-1 text-sm text-navy-600">
+        <div className="rounded-control border border-navy-200 bg-canvas p-3.5 dark:border-navy-700 dark:bg-navy-800">
+          <p className="text-sm font-semibold text-navy-900 dark:text-white">Confirm the scope</p>
+          <ul className="mt-2 space-y-1 text-sm text-navy-600 dark:text-navy-300">
             <li>
               Scope:{' '}
               <span className="font-semibold">

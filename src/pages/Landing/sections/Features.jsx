@@ -78,12 +78,12 @@ const FEATURES = [
 ];
 
 const TONE_CLASSES = {
-  primary: 'bg-primary-100 text-primary-700',
-  info: 'bg-info-50 text-info-700',
-  success: 'bg-success-50 text-success-700',
-  warning: 'bg-warning-50 text-warning-700',
-  danger: 'bg-danger-50 text-danger-700',
-  navy: 'bg-navy-100 text-navy-700',
+  primary: 'bg-primary-500/15 text-primary-400',
+  info: 'bg-info-500/15 text-info-400',
+  success: 'bg-success-500/15 text-success-400',
+  warning: 'bg-warning-500/15 text-warning-400',
+  danger: 'bg-danger-500/15 text-danger-400',
+  navy: 'bg-white/10 text-white/70',
 };
 
 /** Features section (Section 4.2). */

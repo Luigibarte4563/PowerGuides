@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import clsx from 'clsx';
 import { EmptyState, ErrorState, LoadingState } from './ui/States';
 import { toUserMessage } from '@/utils/errorMessage';
 
@@ -45,7 +46,9 @@ export default function DataView({
     <>
       {renderTable ? <div className="hidden md:block">{renderTable(items)}</div> : null}
       {renderCard ? (
-        <div className="space-y-3 md:hidden">
+        // Cards collapse under the table only when a table view exists; with cards
+        // alone they are the ONLY view, so they must render on every screen size.
+        <div className={clsx('space-y-3', renderTable && 'md:hidden')}>
           {items.map((item, index) => (
             <Fragment key={item?.id ?? index}>{renderCard(item, index)}</Fragment>
           ))}

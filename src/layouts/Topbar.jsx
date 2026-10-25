@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, CheckCheck, ChevronDown, LogOut, Menu, Moon, Settings, Sun, User } from 'lucide-react';
+import { Bell, CheckCheck, ChevronDown, LogOut, Menu, Settings, User } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
 import { useMarkAllAsRead, useMarkAsRead, useNotifications } from '@/hooks/useNotifications';
 import NotificationDetailModal from '@/components/NotificationDetailModal';
 import { findNavItem } from '@/routes/navItems';
@@ -68,7 +67,6 @@ export default function Topbar({
   showLocationLink = true,
 }) {
   const { user, logout, role } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const routerLocation = useLocation();
 
@@ -133,34 +131,6 @@ export default function Topbar({
         <p className="truncate text-sm font-medium text-navy-400 dark:text-navy-400">{appLabel}</p>
         <h1 className="truncate text-base font-extrabold text-navy-900 dark:text-white sm:text-lg">{pageTitle}</h1>
       </div>
-
-      {/* Light/dark toggle, ahead of the bell so both read as one control cluster. */}
-      <button
-        type="button"
-        onClick={toggleTheme}
-        className="relative inline-flex h-10 w-10 items-center justify-center rounded-control text-navy-600 transition hover:bg-navy-100 dark:text-navy-300 dark:hover:bg-navy-800"
-        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-        title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-        aria-pressed={isDark}
-      >
-        {/* Both icons are rendered and cross-faded so the control does not resize
-            or pop as the theme changes. The moon is absolutely centred because it
-            would otherwise be laid out after the sun. */}
-        <Sun
-          className={clsx(
-            'h-5 w-5 transition duration-200',
-            isDark ? 'scale-0 -rotate-90 opacity-0' : 'scale-100 rotate-0 opacity-100'
-          )}
-          aria-hidden="true"
-        />
-        <Moon
-          className={clsx(
-            'absolute inset-0 m-auto h-5 w-5 transition duration-200',
-            isDark ? 'scale-100 rotate-0 opacity-100' : 'scale-90 rotate-90 opacity-0'
-          )}
-          aria-hidden="true"
-        />
-      </button>
 
       {/* Notification bell + dropdown */}
       <div className="relative" ref={bellRef}>

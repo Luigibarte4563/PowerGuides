@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import { Flame, Info, Layers, MapPin } from 'lucide-react';
-import PageHeader from '@/components/layout/PageHeader';
+import { ZoomControl } from 'react-leaflet';
+import { Flame, Layers, MapPin } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { ErrorState, LoadingState } from '@/components/ui/States';
 import AppMap, {
   FitPoints,
@@ -14,11 +13,11 @@ import AppMap, {
   MapLegend,
   MapPoints,
 } from '@/components/Map';
-import MapWorkspace from '@/components/MapWorkspace';
+import MapWorkspace, { FeedActions, FeedStatTiles } from '@/components/MapWorkspace';
 import { heatmapApi } from '@/api';
 import { QUERY_KEYS } from '@/utils/constants';
 import { readCluster } from '@/utils/records';
-import { formatNumber, humanize } from '@/utils/formatters';
+import { formatNumber, formatTime, humanize } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
 import { severityTone } from '@/utils/constants';
 
@@ -80,7 +79,8 @@ export default function Heatmap() {
   );
 
   const heatMap = (
-    <AppMap zoom={13} className="h-full w-full">
+    <AppMap zoom={13} zoomControl={false} className="h-full w-full">
+      <ZoomControl position="bottomright" />
       {/* Frames the whole city from whatever is plotted. */}
       <FitPoints items={framedPoints} />
 
@@ -158,11 +158,15 @@ export default function Heatmap() {
     </AppMap>
   );
 
+  const topClusterCount = clusters.reduce((highest, cluster) => Math.max(highest, cluster.count || 0), 0);
+  const plottedTotal = points.length + plottedClusters.length;
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Heatmap & Clusters"
-        description="A visual picture of where outages concentrate across Dagupan."
+    <div
+      data-theme="dark"
+      className="min-h-full bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
+      <FeedActions
         actions={
           <Button variant="outline" icon={Layers} onClick={refetch} loading={isLoading}>
             Refresh layers
@@ -172,104 +176,78 @@ export default function Heatmap() {
 
       <MapWorkspace
         map={heatMap}
-        mapTitle="Outage intensity"
-        mapDescription={isLoading ? '' : `${formatNumber(points.length)} heat point${points.length === 1 ? '' : 's'} across Dagupan`}
-        mapAction={
-          <Button variant="outline" size="sm" onClick={refetch} loading={isLoading}>
-            Refresh
-          </Button>
+        mapLabel="Outage heatmap"
+        mapTitle="Live Heatmap Feed"
+        mapSubtitle={`${formatNumber(plottedTotal)} plotted${
+          heatmapQuery.dataUpdatedAt ? ` · updated ${formatTime(heatmapQuery.dataUpdatedAt)}` : ''
+        }`}
+        stats={[
+          { label: 'Heat points', value: points.length, icon: Flame, color: '#FF2E1F' },
+          { label: 'Clusters', value: clusters.length, icon: MapPin, color: '#22D3EE' },
+          { label: 'Top cluster', value: topClusterCount, icon: Flame, color: '#FFBB02' },
+        ]}
+        pills={
+          /* Layer switches are independent toggles, not a single choice, so they
+             use the pill styling with per-pill pressed state. */
+          <div className="mt-2 flex flex-wrap items-center gap-1" role="group" aria-label="Map layers">
+            {LAYERS.map((layer) => (
+              <button
+                key={layer.key}
+                type="button"
+                onClick={() => setEnabled((current) => ({ ...current, [layer.key]: !current[layer.key] }))}
+                aria-pressed={enabled[layer.key]}
+                className={`h-7 rounded-full border px-2.5 text-[9px] font-bold transition ${
+                  enabled[layer.key]
+                    ? 'border-[#FFBB02]/40 bg-[#FFBB02]/15 text-[#FFBB02]'
+                    : 'border-white/10 bg-transparent text-white/45 hover:border-white/20 hover:text-white/70'
+                }`}
+              >
+                {layer.label}
+              </button>
+            ))}
+          </div>
         }
-        mapFooter={
-          <p className="text-xs text-navy-500">
-            Warmer colours mean more reports in that area. Click a hot area to see how many reports it
-            covers, or click a cluster pin for its total.
-          </p>
-        }
+        plottedCount={plottedTotal}
+        mapEmpty={!isLoading && !error && plottedTotal === 0}
+        mapEmptyLabel="No heatmap data yet"
       >
         {error ? <ErrorState message={toUserMessage(error)} onRetry={refetch} /> : null}
 
         {isLoading ? (
-          <Card>
-            <CardBody>
-              <LoadingState label="Loading map layers…" />
-            </CardBody>
-          </Card>
-        ) : null}
-
-          <Card>
-            <CardHeader description="Turn layers on or off.">Layers</CardHeader>
-            <CardBody className="space-y-2">
-              {LAYERS.map((layer) => (
-                <label
-                  key={layer.key}
-                  className="flex cursor-pointer items-start gap-3 rounded-control border border-navy-100 p-3 transition hover:bg-navy-50"
+          <LoadingState label="Loading map layers…" />
+        ) : clusters.length ? (
+          <ul className="space-y-2">
+            {[...clusters]
+              .sort((a, b) => (b.count || 0) - (a.count || 0))
+              .slice(0, 10)
+              .map((cluster) => (
+                <li
+                  key={cluster.id ?? cluster.label}
+                  className="rounded-xl border border-white/5 bg-[#1C1D30]/35 p-2.5 transition duration-200 hover:-translate-y-0.5"
                 >
-                  <input
-                    type="checkbox"
-                    checked={enabled[layer.key]}
-                    onChange={(event) =>
-                      setEnabled((current) => ({ ...current, [layer.key]: event.target.checked }))
-                    }
-                    className="mt-0.5 h-4 w-4 rounded border-navy-300 text-primary-500 focus:ring-primary-500"
-                  />
-                  <span>
-                    <span className="block text-sm font-semibold text-navy-800">{layer.label}</span>
-                    <span className="block text-xs text-navy-500">{layer.description}</span>
-                  </span>
-                </label>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-[13px] font-bold text-white">{cluster.label}</p>
+                    <Badge
+                      tone={cluster.forecastLevel ? severityTone(cluster.forecastLevel) : 'neutral'}
+                      size="sm"
+                    >
+                      {formatNumber(cluster.count)} reports
+                    </Badge>
+                  </div>
+                  {cluster.forecastLevel ? (
+                    <p className="mt-0.5 text-[11px] text-white/50">
+                      {humanize(cluster.forecastLevel)} forecast
+                    </p>
+                  ) : null}
+                </li>
               ))}
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader>Layer summary</CardHeader>
-            <CardBody className="space-y-3 text-sm">
-              <SummaryRow
-                icon={Flame}
-                label="Heatmap points"
-                value={heatmapQuery.isLoading ? '—' : formatNumber(points.length)}
-              />
-              <SummaryRow
-                icon={MapPin}
-                label="Clusters"
-                value={clustersQuery.isLoading ? '—' : formatNumber(clusters.length)}
-              />
-            </CardBody>
-          </Card>
-
-          {clusters.length ? (
-            <Card>
-              <CardHeader>Top clusters</CardHeader>
-              <CardBody>
-                <ul className="space-y-2">
-                  {[...clusters]
-                    .sort((a, b) => (b.count || 0) - (a.count || 0))
-                    .slice(0, 6)
-                    .map((cluster) => (
-                      <li key={cluster.id ?? cluster.label} className="flex items-center justify-between gap-3">
-                        <span className="truncate text-sm text-navy-700">{cluster.label}</span>
-                        <Badge tone={cluster.forecastLevel ? severityTone(cluster.forecastLevel) : 'neutral'} size="sm">
-                          {formatNumber(cluster.count)} reports
-                        </Badge>
-                      </li>
-                    ))}
-                </ul>
-              </CardBody>
-            </Card>
-          ) : null}
+          </ul>
+        ) : !error ? (
+          <p className="text-[11px] leading-relaxed text-white/40">
+            No clusters stored yet. Heat intensity still shows where reports concentrate.
+          </p>
+        ) : null}
       </MapWorkspace>
-    </div>
-  );
-}
-
-function SummaryRow({ icon: Icon, label, value }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="flex items-center gap-2 text-navy-600">
-        <Icon className="h-4 w-4 text-navy-400" aria-hidden="true" />
-        {label}
-      </span>
-      <span className="font-semibold text-navy-900">{value}</span>
     </div>
   );
 }

@@ -1,13 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { ZoomControl } from 'react-leaflet';
 import { AlertTriangle, ShieldAlert, Waves } from 'lucide-react';
-import PageHeader from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import AppMap, { FitPoints, MapLegend, MapPoints, RadiusCircle } from '@/components/Map';
-import MapWorkspace from '@/components/MapWorkspace';
+import MapWorkspace, { FeedPills, FeedStatTiles } from '@/components/MapWorkspace';
 import { useSavedLocation } from '@/hooks/useSavedLocation';
 import { floodsApi, hazardsApi } from '@/api';
 import { QUERY_KEYS } from '@/utils/constants';
@@ -20,7 +19,7 @@ import {
   severityTone,
   statusTone,
 } from '@/utils/constants';
-import { formatDateTime, formatDistance, humanize } from '@/utils/formatters';
+import { formatDateTime, formatDistance, formatTime, humanize } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
 
 /**
@@ -96,6 +95,12 @@ export default function RiskAreas() {
   const total = floods.length + hazards.length;
   const totalCitywide = allFloods.length + allHazards.length;
 
+  // One merged feed, newest first - the Outages layout shows a single stream.
+  const risks = useMemo(
+    () => [...floods, ...hazards].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)),
+    [floods, hazards]
+  );
+
   const plotted = [
     ...floods.filter((item) => Number.isFinite(item.lat) && Number.isFinite(item.lng)),
     ...hazards.filter((item) => Number.isFinite(item.lat) && Number.isFinite(item.lng)),
@@ -109,7 +114,8 @@ export default function RiskAreas() {
   }.`;
 
   const riskMap = (
-    <AppMap zoom={13} className="h-full w-full">
+    <AppMap zoom={13} zoomControl={false} className="h-full w-full">
+      <ZoomControl position="bottomright" />
       {/* FitPoints frames the risks; the radius circle is a reference for the
           distance filter, not a fetch bound. */}
       <FitPoints items={plotted} />
@@ -159,103 +165,50 @@ export default function RiskAreas() {
 
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Risk Areas"
-        description="Open flood reports and unresolved electrical hazards across Dagupan, in one view."
-      />
-
-      {hasLocation && !locationLooksWrong ? (
-        <Card>
-          <CardHeader description="Narrows the risks already loaded from your saved location. It does not limit what we fetch.">
-            Distance from you
-          </CardHeader>
-          <CardBody className="space-y-3">
-            <label htmlFor="risk-radius" className="block text-sm font-semibold text-navy-800">
-              Within {formatDistance(radius)} of you
-            </label>
-            <input
-              id="risk-radius"
-              type="range"
-              min="250"
-              max="10000"
-              step="250"
-              value={radius}
-              onChange={(event) => setRadius(Number(event.target.value))}
-              className="h-2 w-full cursor-pointer appearance-none rounded-full bg-navy-100 accent-primary-500"
-            />
-            <div className="flex flex-wrap gap-2">
-              {RADIUS_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setRadius(option.value)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                    radius === option.value
-                      ? 'border-primary-400 bg-primary-100 text-primary-800'
-                      : 'border-navy-200 bg-white text-navy-600 hover:bg-navy-50'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </CardBody>
-        </Card>
-      ) : null}
-
+    <div
+      data-theme="dark"
+      className="min-h-full bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
       {locationLooksWrong ? (
-        <Card>
-          <CardBody>
-            <div className="rounded-card border border-warning-200 bg-warning-50 p-6 text-center">
-              <ShieldAlert className="mx-auto h-6 w-6 text-warning-700" aria-hidden="true" />
-              <p className="mt-2 text-base font-bold text-warning-800">Your saved location is outside Dagupan</p>
-              <p className="mx-auto mt-1 max-w-md text-sm text-navy-700">
-                Your saved point is far outside the city, so the distance filter and map would be measuring
-                the wrong place. This usually means the address was matched to a location in another country.
-                Please set your location again.
-              </p>
-              <Button to="/dashboard/location" variant="primary" className="mt-4">
-                Fix my location
-              </Button>
-            </div>
-          </CardBody>
-        </Card>
+        <div className="rounded-2xl border border-[#FFBB02]/25 bg-[#FFBB02]/10 p-6 text-center">
+          <ShieldAlert className="mx-auto h-6 w-6 text-[#FFBB02]" aria-hidden="true" />
+          <p className="mt-2 text-base font-bold text-white">Your saved location is outside Dagupan</p>
+          <p className="mx-auto mt-1 max-w-md text-sm text-white/60">
+            Your saved point is far outside the city, so the distance filter and map would be measuring
+            the wrong place. This usually means the address was matched to a location in another country.
+            Please set your location again.
+          </p>
+          <Button to="/dashboard/location" variant="primary" className="mt-4">
+            Fix my location
+          </Button>
+        </div>
       ) : (
-        <>
-          <MapWorkspace
-            map={isLoading ? <p className="p-6 text-center text-sm text-navy-500">Loading risk areas…</p> : total > 0 ? riskMap : null}
-            mapTitle="Risk map"
-            mapDescription={isLoading ? '' : mapSummary}
-            mapFooter={
-              hasLocation && !locationLooksWrong ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold text-navy-600">Within</span>
-                  {RADIUS_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setRadius(option.value)}
-                      className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
-                        radius === option.value
-                          ? 'border-primary-400 bg-primary-100 text-primary-800'
-                          : 'border-navy-200 bg-white text-navy-600 hover:bg-navy-50'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null
-            }
-          >
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <SummaryTile label="Open risks" value={total} isLoading={isLoading} tone="navy" />
-            <SummaryTile label="Open floods" value={floods.length} isLoading={isLoading} tone="info" />
-            <SummaryTile label="Unresolved hazards" value={hazards.length} isLoading={isLoading} tone="danger" />
-          </div>
-
+        <MapWorkspace
+          map={riskMap}
+          mapLabel="Risk map"
+          mapTitle="Live Risk Feed"
+          mapSubtitle={`${mapSummary}${
+            floodQuery.dataUpdatedAt ? ` · updated ${formatTime(floodQuery.dataUpdatedAt)}` : ''
+          }`}
+          stats={[
+            { label: 'Open risks', value: total, icon: ShieldAlert, color: '#FFBB02' },
+            { label: 'Open floods', value: floods.length, icon: Waves, color: '#22D3EE' },
+            { label: 'Hazards', value: hazards.length, icon: AlertTriangle, color: '#FF2E1F' },
+          ]}
+          pills={
+            hasLocation && !locationLooksWrong ? (
+              <FeedPills
+                ariaLabel="Distance from you"
+                value={String(radius)}
+                onChange={(value) => setRadius(Number(value))}
+                options={RADIUS_OPTIONS}
+              />
+            ) : null
+          }
+          plottedCount={plotted.length}
+          mapEmpty={!isLoading && plotted.length === 0}
+          mapEmptyLabel="No open risks plotted yet"
+        >
           {isError ? (
             <ErrorState
               message={toUserMessage(floodQuery.error || hazardQuery.error)}
@@ -264,108 +217,53 @@ export default function RiskAreas() {
                 hazardQuery.refetch();
               }}
             />
-          ) : null}
-
-          {!isLoading && total === 0 && totalCitywide > 0 && hasLocation ? (
-            <Card>
-              <CardBody>
-                <EmptyState
-                  icon={ShieldAlert}
-                  title={`Nothing open within ${formatDistance(radius)}`}
-                  description={`There ${totalCitywide === 1 ? 'is' : 'are'} ${totalCitywide} open risk${
-                    totalCitywide === 1 ? '' : 's'
-                  } in Dagupan, just further away. Widen the distance to see ${totalCitywide === 1 ? 'it' : 'them'}.`}
-                  action={
-                    <Button variant="primary" onClick={() => setRadius(10000)}>
-                      Show all {totalCitywide}
-                    </Button>
-                  }
-                />
-              </CardBody>
-            </Card>
-          ) : null}
-
-          {!isLoading && totalCitywide === 0 ? (
-            <Card>
-              <CardBody>
-                <EmptyState
-                  icon={ShieldAlert}
-                  title="All clear across Dagupan"
-                  description="No open flood reports or unresolved electrical hazards anywhere in the city. Keep checking back after heavy rain."
-                />
-              </CardBody>
-            </Card>
-          ) : null}
-
-          <div className="space-y-4">
-            <RiskList
-              title="Open floods"
-              icon={Waves}
-              tone="info"
-              items={floods}
-              isLoading={isLoading}
-              emptyLabel="No open flood reports here."
-            />
-            <RiskList
-              title="Unresolved electrical hazards"
-              icon={AlertTriangle}
-              tone="danger"
-              items={hazards}
-              isLoading={isLoading}
-              emptyLabel="No unresolved electrical hazards here."
-            />
-          </div>
-          </MapWorkspace>
-        </>
-      )}
-    </div>
-  );
-}
-
-function SummaryTile({ label, value, isLoading, tone }) {
-  const tones = {
-    info: 'bg-info-50 text-info-700 border-info-200',
-    danger: 'bg-danger-50 text-danger-700 border-danger-200',
-    navy: 'bg-navy-50 text-navy-800 border-navy-200',
-  };
-
-  return (
-    <div className={`rounded-card border p-5 shadow-card ${tones[tone]}`}>
-      <p className="text-sm font-medium opacity-80">{label}</p>
-      <p className="mt-1 text-2xl font-extrabold">{isLoading ? '—' : value}</p>
-    </div>
-  );
-}
-
-function RiskList({ title, icon: Icon, tone, items, isLoading, emptyLabel }) {
-  return (
-    <Card>
-      <CardHeader description={isLoading ? 'Loading…' : `${items.length} within range`}>{title}</CardHeader>
-      <CardBody className="space-y-3">
-        {isLoading ? (
-          <LoadingState label="Loading…" />
-        ) : items.length === 0 ? (
-          <p className="rounded-card border border-dashed border-navy-200 bg-canvas p-5 text-center text-sm text-navy-500">
-            {emptyLabel}
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {items.map((item) => (
-              <li
-                key={`${item.kind}-${item.id}`}
-                className="flex items-start gap-3 rounded-card border border-navy-100 p-4"
-              >
-                <span
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-control ${
-                    tone === 'info' ? 'bg-info-50 text-info-700' : 'bg-danger-50 text-danger-700'
-                  }`}
+          ) : isLoading ? (
+            <LoadingState label="Loading risk areas…" />
+          ) : total === 0 ? (
+            totalCitywide > 0 && hasLocation ? (
+              <EmptyState
+                icon={ShieldAlert}
+                title={`Nothing open within ${formatDistance(radius)}`}
+                description={`There ${totalCitywide === 1 ? 'is' : 'are'} ${totalCitywide} open risk${
+                  totalCitywide === 1 ? '' : 's'
+                } in Dagupan, just further away. Widen the distance to see ${totalCitywide === 1 ? 'it' : 'them'}.`}
+                action={
+                  <Button variant="primary" onClick={() => setRadius(10000)}>
+                    Show all {totalCitywide}
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon={ShieldAlert}
+                title="All clear across Dagupan"
+                description="No open flood reports or unresolved electrical hazards anywhere in the city. Keep checking back after heavy rain."
+              />
+            )
+          ) : (
+            <ul className="space-y-2">
+              {risks.map((item) => (
+                <li
+                  key={`${item.kind}-${item.id}`}
+                  className="rounded-xl border border-white/5 bg-[#1C1D30]/35 p-2.5 transition duration-200 hover:-translate-y-0.5"
                 >
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <h3 className="text-sm font-bold text-navy-900">{item.label}</h3>
-                    <div className="flex flex-wrap gap-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                      <span
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                          item.kind === 'flood' ? 'bg-[#22D3EE]' : 'bg-[#FF2E1F]'
+                        }`}
+                        aria-hidden="true"
+                      />
+                      <span
+                        className={`rounded-full border px-1.5 py-0.5 text-[8px] font-extrabold tracking-[0.12em] ${
+                          item.kind === 'flood'
+                            ? 'border-[#22D3EE]/20 bg-[#22D3EE]/10 text-[#22D3EE]'
+                            : 'border-[#FF2E1F]/20 bg-[#FF2E1F]/10 text-[#FF2E1F]'
+                        }`}
+                      >
+                        {item.kind === 'flood' ? 'FLOOD' : 'HAZARD'}
+                      </span>
                       {item.severity ? (
                         <Badge tone={severityTone(item.severity)} size="sm">
                           {humanize(item.severity)}
@@ -377,15 +275,24 @@ function RiskList({ title, icon: Icon, tone, items, isLoading, emptyLabel }) {
                         </Badge>
                       ) : null}
                     </div>
+                    <span className="shrink-0 text-[8.5px] font-medium text-white/35">
+                      {formatDateTime(item.createdAt)}
+                    </span>
                   </div>
-                  <p className="mt-1 text-sm text-navy-600">{item.description}</p>
-                  <p className="mt-1 text-xs text-navy-400">{formatDateTime(item.createdAt)}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardBody>
-    </Card>
+                  <h3 className="mt-1 truncate text-[13px] font-bold leading-tight text-white">
+                    {item.label}
+                  </h3>
+                  {item.description ? (
+                    <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-white/50">
+                      {item.description}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </MapWorkspace>
+      )}
+    </div>
   );
 }

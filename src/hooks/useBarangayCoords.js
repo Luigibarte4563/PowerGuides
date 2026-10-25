@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { findOption, useReference } from '@/context/ReferenceContext';
+import { hasCoordinates } from '@/utils/formatters';
 
 /**
  * The barangay is the coordinate authority.
@@ -18,10 +19,11 @@ import { findOption, useReference } from '@/context/ReferenceContext';
 
 /** Reads coordinates off a normalised reference option. */
 export function barangayCoords(option) {
-  const lat = Number(option?.latitude);
-  const lng = Number(option?.longitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)) };
+  if (!hasCoordinates(option?.latitude, option?.longitude)) return null;
+  return {
+    lat: Number(Number(option.latitude).toFixed(6)),
+    lng: Number(Number(option.longitude).toFixed(6)),
+  };
 }
 
 export function useBarangayCoords() {

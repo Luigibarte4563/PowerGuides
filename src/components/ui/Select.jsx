@@ -20,6 +20,7 @@ export const Select = forwardRef(function Select(
     className,
     id,
     wrapperClassName,
+    labelClassName,
     children,
     ...rest
   },
@@ -47,6 +48,7 @@ export const Select = forwardRef(function Select(
       error={error}
       required={required}
       className={wrapperClassName}
+      labelClassName={labelClassName}
     >
       <div className="relative">
         <select
@@ -67,7 +69,7 @@ export const Select = forwardRef(function Select(
           {children}
         </select>
         <ChevronDown
-          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-400"
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-400 dark:text-navy-300"
           aria-hidden="true"
         />
         {loading ? (

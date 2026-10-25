@@ -1,15 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ZoomControl } from 'react-leaflet';
 import { AlertTriangle, CheckCircle2, Crosshair, MapPin, ShieldCheck, XCircle } from 'lucide-react';
-import PageHeader from '@/components/layout/PageHeader';
 import Pagination from '@/components/Pagination';
-import Tabs from '@/components/ui/Tabs';
 import Badge from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { TBody, TD, TH, THead, TR, Table } from '@/components/ui/Table';
 import { InfoNote } from '@/components/ui/Alert';
 import { LoadingState } from '@/components/ui/States';
 import DataView from '@/components/DataView';
@@ -23,7 +20,7 @@ import AppMap, {
   MapView,
 } from '@/components/Map';
 import MapPicker from '@/components/MapPicker';
-import MapWorkspace from '@/components/MapWorkspace';
+import MapWorkspace, { FeedActions, FeedPills, FeedToggle } from '@/components/MapWorkspace';
 import { useReference } from '@/context/ReferenceContext';
 import { useToast } from '@/context/ToastContext';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -37,7 +34,7 @@ import {
   statusTone,
 } from '@/utils/constants';
 import { readHazard, resolveImageUrl, withDistance } from '@/utils/records';
-import { formatDateTime, formatDistance, formatRelativeTime, hasCoordinates, humanize } from '@/utils/formatters';
+import { formatDateTime, formatDistance, formatRelativeTime, formatTime, hasCoordinates, humanize } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
 
 const TABS = [
@@ -191,7 +188,7 @@ export default function Hazards() {
             </div>
           )}
         </MapPoints>
-        <MapCircle center={probe} radius={probeRadius} color="#2563EB" fillOpacity={0.06} />
+        <MapCircle center={probe} radius={probeRadius} color="#22D3EE" fillOpacity={0.06} />
         <MapPinMarker position={probe} tone="primary">
           <p className="font-bold text-navy-900">Search centre</p>
           <p className="mt-0.5 text-xs text-navy-500">
@@ -214,13 +211,13 @@ export default function Hazards() {
 
   const hazardMap =
     mapped.length === 0 ? (
-      <p className="h-full overflow-y-auto p-8 text-center text-sm text-navy-500">
-        {listQuery.isLoading
-          ? 'Loading hazards…'
-          : 'No hazard matching these filters carries coordinates yet.'}
-      </p>
+      <AppMap zoom={12} zoomControl={false} className="h-full w-full">
+        <ZoomControl position="bottomright" />
+        <FitPoints items={[]} />
+      </AppMap>
     ) : (
-      <AppMap zoom={12} className="h-full w-full">
+      <AppMap zoom={12} zoomControl={false} className="h-full w-full">
+        <ZoomControl position="bottomright" />
         <FitPoints items={mapped} />
         <MapPoints
           items={mapped}
@@ -269,205 +266,166 @@ export default function Hazards() {
 
   const resetPage = () => setPage(1);
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Hazard Review"
-        description="Triage the electrical hazards residents reported and confirm or close them."
-      />
+  // Feed stat tiles, counted over the rows currently in view.
+  const criticalCount = rows.filter((hazard) =>
+    ['critical', 'high'].includes(String(hazard.severity).toLowerCase())
+  ).length;
+  const resolvedCount = rows.filter(
+    (hazard) => String(hazard.status).toLowerCase() === 'resolved'
+  ).length;
 
-      <Tabs
-        tabs={TABS}
-        value={tab}
-        onChange={(value) => {
-          setTab(value);
+  return (
+    <div
+      data-theme="dark"
+      className="min-h-full bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
+      <FeedActions
+        search={search}
+        onSearchChange={(value) => {
+          setSearch(value);
           resetPage();
         }}
-        ariaLabel="Hazard status"
+        onClearSearch={() => {
+          setSearch('');
+          resetPage();
+        }}
+        searchId="company-hazard-search"
+        searchLabel="Search hazards"
+        searchPlaceholder="Search location, type, description…"
       />
-
-      <Card>
-        <CardBody className="grid gap-3 sm:grid-cols-4">
-          <Input
-            label="Search"
-            type="search"
-            placeholder="Location, type or description"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              resetPage();
-            }}
-          />
-          <Select
-            label="Severity"
-            options={severityLevels}
-            placeholder="All severities"
-            value={severity}
-            onChange={(event) => {
-              setSeverity(event.target.value);
-              resetPage();
-            }}
-          />
-          <Select
-            label="Barangay"
-            options={barangays}
-            placeholder="All barangays"
-            value={barangay}
-            onChange={(event) => {
-              setBarangay(event.target.value);
-              resetPage();
-            }}
-          />
-        </CardBody>
-      </Card>
 
       <MapWorkspace
         map={hazardMap}
-        mapTitle="Hazard map"
-        mapDescription={`${mapped.length} of ${rows.length} hazard${rows.length === 1 ? '' : 's'} plotted.`}
+        mapLabel="Hazard map"
+        mapTitle="Hazard Review Feed"
+        mapSubtitle={`${mapped.length} of ${rows.length} plotted${
+          listQuery.dataUpdatedAt ? ` · updated ${formatTime(listQuery.dataUpdatedAt)}` : ''
+        }`}
+        toggle={
+          <FeedToggle
+            ariaLabel="Hazard status"
+            value={tab}
+            onChange={(value) => {
+              setTab(value);
+              resetPage();
+            }}
+            options={TABS}
+          />
+        }
+        stats={[
+          { label: 'In view', value: rows.length, icon: AlertTriangle, color: '#22D3EE' },
+          { label: 'High / critical', value: criticalCount, icon: AlertTriangle, color: '#FF2E1F' },
+          { label: 'Resolved', value: resolvedCount, icon: CheckCircle2, color: '#34FB34' },
+        ]}
+        pills={
+          <FeedPills
+            ariaLabel="Filter by severity"
+            value={severity || 'all'}
+            onChange={(value) => {
+              setSeverity(value === 'all' ? '' : value);
+              resetPage();
+            }}
+            options={[{ value: 'all', label: 'All' }, ...severityLevels]}
+          />
+        }
+        filters={
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
+            <Select
+              aria-label="Filter by barangay"
+              placeholder="All barangays"
+              options={barangays}
+              value={barangay}
+              onChange={(event) => {
+                setBarangay(event.target.value);
+                resetPage();
+              }}
+              className="h-9 py-0 text-xs"
+            />
+          </div>
+        }
+        plottedCount={mapped.length}
+        mapEmpty={!listQuery.isLoading && !listQuery.isError && mapped.length === 0}
+        mapEmptyLabel="No mapped hazards yet"
       >
-        <DataView
-          isLoading={listQuery.isLoading}
-          error={listQuery.isError}
-          onRetry={() => listQuery.refetch()}
-          loadingLabel="Loading hazards…"
-          items={pageRows}
-          empty={{
-            icon: ShieldCheck,
-            title: 'No hazards here',
-            description:
-              'Nothing matching these filters. Electrical hazards reported by residents appear in this list.',
-          }}
-          renderCard={(hazard) => {
-            const action = STATUS_ACTIONS[String(hazard.status ?? '').toLowerCase()];
-            return (
-              <RecordCard
-                icon={AlertTriangle}
-                iconTone={severityTone(hazard.severity)}
-                title={hazard.locationName || hazard.barangay || 'Electrical hazard'}
-                subtitle={[
-                  humanize(hazard.hazardType, 'Hazard'),
-                  hazard.barangay,
-                  `reported ${formatRelativeTime(hazard.createdAt)}`,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-                badges={[
-                  hazard.severity
-                    ? { label: humanize(hazard.severity), tone: severityTone(hazard.severity) }
-                    : null,
-                  hazard.status ? { label: humanize(hazard.status), tone: statusTone(hazard.status) } : null,
-                ]}
-                description={hazard.description}
-                meta={[{ label: 'Reported', value: formatDateTime(hazard.createdAt) }]}
-                actions={
-                  action ? (
-                    <Button
-                      size="sm"
-                      variant={action.tone}
-                      icon={action.icon}
-                      loading={statusMutation.isPending && statusMutation.variables?.hazardId === hazard.id}
-                      onClick={() =>
-                        statusMutation.mutate({ hazardId: hazard.id, status: action.value })
-                      }
+        <div className="space-y-3">
+          <DataView
+            isLoading={listQuery.isLoading}
+            error={listQuery.isError}
+            onRetry={() => listQuery.refetch()}
+            loadingLabel="Loading hazards…"
+            items={pageRows}
+            empty={{
+              icon: ShieldCheck,
+              title: 'No hazards here',
+              description:
+                'Nothing matching these filters. Electrical hazards reported by residents appear in this list.',
+            }}
+            renderCard={(hazard) => {
+              const action = STATUS_ACTIONS[String(hazard.status ?? '').toLowerCase()];
+              return (
+                <RecordCard
+                  icon={AlertTriangle}
+                  iconTone={severityTone(hazard.severity)}
+                  title={hazard.locationName || hazard.barangay || 'Electrical hazard'}
+                  subtitle={[
+                    humanize(hazard.hazardType, 'Hazard'),
+                    hazard.barangay,
+                    `reported ${formatRelativeTime(hazard.createdAt)}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                  badges={[
+                    hazard.severity
+                      ? { label: humanize(hazard.severity), tone: severityTone(hazard.severity) }
+                      : null,
+                    hazard.status ? { label: humanize(hazard.status), tone: statusTone(hazard.status) } : null,
+                  ]}
+                  description={hazard.description}
+                  meta={[{ label: 'Reported', value: formatDateTime(hazard.createdAt) }]}
+                  actions={
+                    action ? (
+                      <Button
+                        size="sm"
+                        variant={action.tone}
+                        icon={action.icon}
+                        loading={statusMutation.isPending && statusMutation.variables?.hazardId === hazard.id}
+                        onClick={() =>
+                          statusMutation.mutate({ hazardId: hazard.id, status: action.value })
+                        }
+                      >
+                        {action.label}
+                      </Button>
+                    ) : null
+                  }
+                >
+                  {hazard.image ? (
+                    <a
+                      href={resolveImageUrl(hazard.image)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-3 block"
                     >
-                      {action.label}
-                    </Button>
-                  ) : null
-                }
-              >
-                {hazard.image ? (
-                  <a
-                    href={resolveImageUrl(hazard.image)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 block"
-                  >
-                    <img
-                      src={resolveImageUrl(hazard.image)}
-                      alt="Hazard evidence"
-                      loading="lazy"
-                      className="h-32 w-full rounded-control border border-navy-100 object-cover"
-                    />
-                  </a>
-                ) : null}
-              </RecordCard>
-            );
-          }}
-          renderTable={(visible) => (
-            <div className="rounded-card border border-navy-100 bg-white shadow-card">
-              <Table>
-                <THead>
-                  <tr>
-                    <TH>Location</TH>
-                    <TH>Barangay</TH>
-                    <TH>Type</TH>
-                    <TH>Severity</TH>
-                    <TH>Status</TH>
-                    <TH>Reported</TH>
-                    <TH align="right">Action</TH>
-                  </tr>
-                </THead>
-                <TBody>
-                  {visible.map((hazard) => {
-                    const action = STATUS_ACTIONS[String(hazard.status ?? '').toLowerCase()];
-                    return (
-                      <TR key={hazard.id}>
-                        <TD>
-                          <span className="font-semibold text-navy-900">
-                            {hazard.locationName || 'Unspecified'}
-                          </span>
-                          {hazard.description ? (
-                            <p className="mt-0.5 max-w-xs truncate text-xs text-navy-500">
-                              {hazard.description}
-                            </p>
-                          ) : null}
-                        </TD>
-                        <TD className="text-sm">{hazard.barangay || '—'}</TD>
-                        <TD className="text-sm">{humanize(hazard.hazardType, '—')}</TD>
-                        <TD>
-                          <Badge tone={severityTone(hazard.severity)}>
-                            {humanize(hazard.severity, '—')}
-                          </Badge>
-                        </TD>
-                        <TD>
-                          <Badge tone={statusTone(hazard.status)}>{humanize(hazard.status, '—')}</Badge>
-                        </TD>
-                        <TD className="whitespace-nowrap text-xs text-navy-500">
-                          {formatDateTime(hazard.createdAt)}
-                        </TD>
-                        <TD align="right">
-                          {action ? (
-                            <Button
-                              size="sm"
-                              variant={action.tone}
-                              icon={action.icon}
-                              loading={statusMutation.isPending && statusMutation.variables?.hazardId === hazard.id}
-                              onClick={() =>
-                                statusMutation.mutate({ hazardId: hazard.id, status: action.value })
-                              }
-                            >
-                              {action.label}
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-navy-300">No further action</span>
-                          )}
-                        </TD>
-                      </TR>
-                    );
-                  })}
-                </TBody>
-              </Table>
-              <Pagination
-                page={page}
-                pageCount={pageCount}
-                total={rows.length}
-                pageSize={COMPANY_PAGE_SIZE}
-                onChange={setPage}
-              />
-            </div>
-          )}
-        />
+                      <img
+                        src={resolveImageUrl(hazard.image)}
+                        alt="Hazard evidence"
+                        loading="lazy"
+                        className="h-32 w-full rounded-control border border-navy-100 object-cover"
+                      />
+                    </a>
+                  ) : null}
+                </RecordCard>
+              );
+            }}
+          />
+
+          <Pagination
+            page={page}
+            pageCount={pageCount}
+            total={rows.length}
+            pageSize={COMPANY_PAGE_SIZE}
+            onChange={setPage}
+          />
+        </div>
       </MapWorkspace>
 
       {/* FR-HAZ-3 - the point/radius lookup, kept out of the filter card above because

@@ -1,23 +1,18 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarClock, Info, Wrench } from 'lucide-react';
-import PageHeader from '@/components/layout/PageHeader';
-import Tabs from '@/components/ui/Tabs';
+import { ZoomControl } from 'react-leaflet';
+import { CalendarClock, CheckCircle2, Info, Wrench } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { TBody, TD, TH, THead, TR, Table } from '@/components/ui/Table';
 import DataView from '@/components/DataView';
 import RecordCard from '@/components/RecordCard';
 import AppMap, { FitPoints, MapCircle, MapLegend, MapPoints, PIN_COLORS } from '@/components/Map';
-import MapWorkspace from '@/components/MapWorkspace';
+import MapWorkspace, { FeedActions, FeedToggle } from '@/components/MapWorkspace';
 import { maintenanceApi, UPCOMING_STATUSES } from '@/api';
 import { QUERY_KEYS } from '@/utils/constants';
 import { readMaintenance } from '@/utils/records';
 import { statusTone } from '@/utils/constants';
-import { formatDateTime, formatDistance, humanize } from '@/utils/formatters';
+import { formatDateTime, formatDistance, formatTime, humanize } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
 
 /**
@@ -123,15 +118,19 @@ export default function Maintenance() {
     ? 'Loading affected areas…'
     : `${mapPoints.length} affected area${mapPoints.length === 1 ? '' : 's'} plotted`;
 
+  // Feed stat tiles, counted the same way the tabs filter.
+  const upcomingCount = all.filter((item) =>
+    UPCOMING_STATUSES.includes(String(item.status).toLowerCase())
+  ).length;
+  const ongoingCount = all.filter((item) => String(item.status).toLowerCase() === 'ongoing').length;
+  const completedCount = all.filter((item) => String(item.status).toLowerCase() === 'completed').length;
+
   const maintenanceMap =
     mapQuery.isError ? (
       <p className="h-full p-6 text-sm font-medium text-danger-700">{toUserMessage(mapQuery.error)}</p>
-    ) : mapPoints.length === 0 ? (
-      <p className="h-full overflow-y-auto p-6 text-center text-sm text-navy-500">
-        No maintenance areas with coordinates to plot yet.
-      </p>
     ) : (
-      <AppMap className="h-full w-full">
+      <AppMap zoomControl={false} className="h-full w-full">
+        <ZoomControl position="bottomright" />
         {/* Grown by the radius so a whole coverage circle sits inside the fitted view. */}
         <FitPoints items={mapPoints} radiusFor={(point) => point.schedule?.radius} />
 
@@ -166,143 +165,98 @@ export default function Maintenance() {
     );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Maintenance Schedules"
-        description="Planned maintenance and outage windows published by the utility. Read only."
-      />
-
-      <Tabs
-        tabs={[
-          { value: 'upcoming', label: 'Upcoming', icon: CalendarClock, count: upcomingCountQuery.data },
-          { value: 'all', label: 'All schedules', icon: Wrench, count: all.length },
-        ]}
-        value={tab}
-        onChange={setTab}
-        ariaLabel="Maintenance filters"
+    <div
+      data-theme="dark"
+      className="min-h-full bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
+      <FeedActions
+        search={search}
+        onSearchChange={setSearch}
+        onClearSearch={() => setSearch('')}
+        searchId="maintenance-search"
+        searchLabel="Search maintenance schedules"
+        searchPlaceholder="Search schedules, areas, company…"
       />
 
       <MapWorkspace
-        map={mapPoints.length || mapQuery.isError || mapQuery.isLoading ? maintenanceMap : null}
-        mapTitle="Maintenance areas"
-        mapDescription={mapSummary}
-        mapAction={
-          <Button variant="outline" size="sm" onClick={() => mapQuery.refetch()} loading={mapQuery.isLoading}>
-            Refresh
-          </Button>
+        map={maintenanceMap}
+        mapLabel="Maintenance areas map"
+        mapTitle="Maintenance Feed"
+        mapSubtitle={`${mapSummary}${mapQuery.dataUpdatedAt ? ` · updated ${formatTime(mapQuery.dataUpdatedAt)}` : ''}`}
+        toggle={
+          <FeedToggle
+            ariaLabel="Maintenance scope"
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'upcoming', label: 'Upcoming', count: upcomingCountQuery.data ?? upcomingCount },
+              { value: 'all', label: 'All schedules', count: all.length },
+            ]}
+          />
         }
-      >
-          <Card className="card-hover">
-            <CardBody className="grid gap-3 sm:grid-cols-3">
-              <Input
-                label="Search"
-                placeholder="Search schedules"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
+        stats={[
+          { label: 'Upcoming', value: upcomingCount, icon: CalendarClock, color: '#22D3EE' },
+          { label: 'Ongoing', value: ongoingCount, icon: Wrench, color: '#FFBB02' },
+          { label: 'Completed', value: completedCount, icon: CheckCircle2, color: '#34FB34' },
+        ]}
+        filters={
+          statusOptions.length ? (
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
               <Select
-                label="Status"
+                aria-label="Filter by status"
                 placeholder="All statuses"
                 options={statusOptions}
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
+                className="h-9 py-0 text-xs"
               />
-              <div className="flex items-end">
-                <Button
-                  variant="outline"
-                  fullWidth
-                  onClick={() => {
-                    setSearch('');
-                    setStatusFilter('');
-                  }}
-                >
-                  Clear filters
-                </Button>
-              </div>
-            </CardBody>
-          </Card>
+            </div>
+          ) : null
+        }
+        plottedCount={mapQuery.isError ? undefined : mapPoints.length}
+        mapEmpty={!mapQuery.isLoading && !mapQuery.isError && mapPoints.length === 0}
+        mapEmptyLabel="No mapped maintenance areas yet"
+      >
+        <DataView
+          isLoading={listQuery.isLoading}
+          error={listQuery.isError}
+          errorMessage={toUserMessage(listQuery.error)}
+          onRetry={() => listQuery.refetch()}
+          loadingLabel="Loading maintenance schedules…"
+          items={items}
+          empty={{
+            icon: Wrench,
+            title: tab === 'upcoming' ? 'No upcoming maintenance' : 'No maintenance schedules',
+            description:
+              tab === 'upcoming'
+                ? 'Nothing is scheduled at the moment. Check back later.'
+                : 'Maintenance schedules published by the utility will appear here.',
+          }}
+          renderCard={(item) => (
+            <RecordCard
+              icon={Wrench}
+              iconTone="info"
+              title={item.title}
+              subtitle={`${formatDateTime(item.startAt)}${item.endAt ? ` → ${formatDateTime(item.endAt)}` : ''}`}
+              badges={[
+                item.status ? { label: humanize(item.status), tone: statusTone(item.status) } : null,
+                item.company ? { label: item.company, tone: 'neutral' } : null,
+              ]}
+              description={item.description}
+              meta={[
+                item.barangay ? { label: 'Areas', value: item.barangay } : null,
+                Number.isFinite(item.radius) ? { label: 'Radius', value: formatDistance(item.radius) } : null,
+              ].filter(Boolean)}
+            />
+          )}
+        />
+      </MapWorkspace>
 
-          <DataView
-            isLoading={listQuery.isLoading}
-            error={listQuery.isError}
-            errorMessage={toUserMessage(listQuery.error)}
-            onRetry={() => listQuery.refetch()}
-            loadingLabel="Loading maintenance schedules…"
-            items={items}
-            empty={{
-              icon: Wrench,
-              title: tab === 'upcoming' ? 'No upcoming maintenance' : 'No maintenance schedules',
-              description:
-                tab === 'upcoming'
-                  ? 'Nothing is scheduled at the moment. Check back later.'
-                  : 'Maintenance schedules published by the utility will appear here.',
-            }}
-            renderCard={(item) => (
-              <RecordCard
-                icon={Wrench}
-                iconTone="info"
-                title={item.title}
-                subtitle={`${formatDateTime(item.startAt)}${item.endAt ? ` → ${formatDateTime(item.endAt)}` : ''}`}
-                badges={[
-                  item.status ? { label: humanize(item.status), tone: statusTone(item.status) } : null,
-                  item.company ? { label: item.company, tone: 'neutral' } : null,
-                ]}
-                description={item.description}
-                meta={[
-                  item.barangay ? { label: 'Areas', value: item.barangay } : null,
-                  Number.isFinite(item.radius) ? { label: 'Radius', value: formatDistance(item.radius) } : null,
-                ].filter(Boolean)}
-              />
-            )}
-            renderTable={(rows) => (
-              <div className="rounded-card border border-navy-100 bg-white shadow-card">
-                <Table>
-                  <THead>
-                    <tr>
-                      <TH>Schedule</TH>
-                      <TH>Areas</TH>
-                      <TH>Window</TH>
-                      <TH>Radius</TH>
-                      <TH>Status</TH>
-                    </tr>
-                  </THead>
-                  <TBody>
-                    {rows.map((item) => (
-                      <TR key={item.id}>
-                        <TD>
-                          <p className="font-semibold text-navy-900">{item.title}</p>
-                          <p className="mt-0.5 max-w-sm truncate text-xs text-navy-500">{item.description}</p>
-                        </TD>
-                        <TD className="max-w-[14rem] text-xs">{item.barangay || '—'}</TD>
-                        <TD className="whitespace-nowrap text-xs">
-                          {formatDateTime(item.startAt)}
-                          {item.endAt ? (
-                            <span className="block text-navy-500">to {formatDateTime(item.endAt)}</span>
-                          ) : null}
-                        </TD>
-                        <TD className="whitespace-nowrap text-xs">
-                          {Number.isFinite(item.radius) ? formatDistance(item.radius) : '—'}
-                        </TD>
-                        <TD>
-                          {item.status ? (
-                            <Badge tone={statusTone(item.status)}>{humanize(item.status)}</Badge>
-                          ) : (
-                            '—'
-                          )}
-                        </TD>
-                      </TR>
-                    ))}
-                  </TBody>
-                </Table>
-              </div>
-            )}
-          />
-          <p className="flex items-start gap-2 text-xs text-navy-500">
-            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            Maintenance records are published by the utility company. Creating or editing schedules is not
-            available to community users.
-          </p>
-        </MapWorkspace>
+      <p className="mt-4 flex items-start gap-2 text-[10px] text-white/40">
+        <Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+        Maintenance records are published by the utility company. Creating or editing schedules is not
+        available to community users.
+      </p>
     </div>
   );
 }

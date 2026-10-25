@@ -15,9 +15,9 @@ export default function AccessDenied({ role }) {
   const { roles } = useReference();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-12">
+    <div data-surface="dark" className="flex min-h-screen items-center justify-center bg-canvas px-4 py-12">
       <div className="w-full max-w-lg rounded-card border border-navy-100 bg-white p-8 text-center shadow-card">
-        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-danger-50 text-danger-600">
+        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-danger-500/15 text-danger-400">
           <ShieldX className="h-7 w-7" aria-hidden="true" />
         </span>
 

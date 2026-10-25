@@ -64,7 +64,7 @@ export default function MapPicker({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-navy-800">
+        <p className="text-sm font-semibold text-navy-800 dark:text-navy-100">
           {label}
           <span className="ml-0.5 text-danger-600" aria-hidden="true">
             *
@@ -127,14 +127,14 @@ export default function MapPicker({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-navy-500">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-navy-500 dark:text-navy-400">
         <span>
           Latitude:{' '}
-          <span className="font-semibold text-navy-700">{point ? round6(point.lat).toFixed(6) : '—'}</span>
+          <span className="font-semibold text-navy-700 dark:text-navy-200">{point ? round6(point.lat).toFixed(6) : '—'}</span>
         </span>
         <span>
           Longitude:{' '}
-          <span className="font-semibold text-navy-700">{point ? round6(point.lng).toFixed(6) : '—'}</span>
+          <span className="font-semibold text-navy-700 dark:text-navy-200">{point ? round6(point.lng).toFixed(6) : '—'}</span>
         </span>
       </div>
 

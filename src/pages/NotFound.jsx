@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/Button';
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col bg-canvas">
+    <div data-surface="dark" className="flex min-h-screen flex-col bg-canvas">
       <main className="flex flex-1 items-center justify-center px-4 py-16">
         <div className="w-full max-w-md text-center">
-          <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+          <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary-500/15 text-primary-400">
             <Compass className="h-7 w-7" aria-hidden="true" />
           </span>
           <p className="mt-6 text-sm font-bold uppercase tracking-[0.2em] text-primary-600">Error 404</p>

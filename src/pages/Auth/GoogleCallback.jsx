@@ -122,7 +122,7 @@ export default function GoogleCallback() {
       <div className="container-app flex min-h-[70vh] items-center justify-center py-10">
         <Card className="w-full max-w-md">
           <CardBody className="text-center">
-            <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-danger-50 text-danger-600">
+            <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-danger-500/15 text-danger-400">
               <TriangleAlert className="h-6 w-6" aria-hidden="true" />
             </span>
             <h1 className="mt-4 text-lg font-extrabold text-navy-900">Google sign-in did not finish</h1>

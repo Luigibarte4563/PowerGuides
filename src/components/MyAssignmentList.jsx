@@ -59,11 +59,11 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
         renderCard={(assignment) => (
           <Card>
             <CardBody className="flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-primary-100 text-primary-700">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-primary-100 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300">
                 <MapPin className="h-5 w-5" aria-hidden="true" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-navy-900">
+                <p className="truncate text-sm font-bold text-navy-900 dark:text-white">
                   {assignment.barangayName || 'Unnamed barangay'}
                 </p>
                 <div className="mt-1.5">
@@ -86,7 +86,7 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
           </Card>
         )}
         renderTable={(visible) => (
-          <div className="rounded-card border border-navy-100 bg-white shadow-card">
+          <div className="rounded-card border border-navy-100 bg-white shadow-card dark:border-navy-700 dark:bg-navy-800 dark:shadow-card-dark">
             <Table>
               <THead>
                 <tr>
@@ -99,8 +99,8 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
                 {visible.map((assignment) => (
                   <TR key={assignment.id}>
                     <TD>
-                      <span className="inline-flex items-center gap-1.5 font-semibold text-navy-900">
-                        <MapPin className="h-3.5 w-3.5 text-navy-400" aria-hidden="true" />
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-navy-900 dark:text-white">
+                        <MapPin className="h-3.5 w-3.5 text-navy-400 dark:text-navy-500" aria-hidden="true" />
                         {assignment.barangayName || 'Unnamed barangay'}
                       </span>
                     </TD>
@@ -139,7 +139,7 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
             Access follows the assignment
           </CardHeader>
           <CardBody>
-            <ul className="space-y-2 text-sm text-navy-600">
+            <ul className="space-y-2 text-sm text-navy-600 dark:text-navy-300">
               <li>
                 You can view, verify and add field updates to outage reports in these
                 barangays. Reports outside them are not returned to you by the API at all.
@@ -153,8 +153,8 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
                 company and admin action.
               </li>
             </ul>
-            <p className="mt-4 text-sm text-navy-600">
-              Select <span className="font-semibold text-navy-900">View outages</span> on any
+            <p className="mt-4 text-sm text-navy-600 dark:text-navy-300">
+              Select <span className="font-semibold text-navy-900 dark:text-white">View outages</span> on any
               barangay above to see its reports here, without leaving this page.
             </p>
           </CardBody>

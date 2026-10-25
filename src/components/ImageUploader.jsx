@@ -17,6 +17,7 @@ export default function ImageUploader({
   error,
   disabled = false,
   maxWidth = 'max-w-md',
+  labelClassName = '',
 }) {
   const inputRef = useRef(null);
   const [preview, setPreview] = useState('');
@@ -60,13 +61,17 @@ export default function ImageUploader({
 
   return (
     <div className={maxWidth}>
-      <p className="text-sm font-semibold text-navy-800">{label}</p>
+      <p className={labelClassName || 'text-sm font-semibold text-navy-800 dark:text-navy-100'}>{label}</p>
 
       {preview ? (
-        <div className="mt-2 overflow-hidden rounded-card border border-navy-200">
-          <img src={preview} alt="Selected report photo preview" className="h-40 w-full bg-navy-100 object-cover" />
-          <div className="flex items-center justify-between gap-2 border-t border-navy-100 px-3 py-2">
-            <span className="truncate text-xs text-navy-500">
+        <div className="mt-2 overflow-hidden rounded-card border border-navy-200 dark:border-white/10">
+          <img
+            src={preview}
+            alt="Selected report photo preview"
+            className="h-40 w-full bg-navy-100 object-cover dark:bg-navy-800"
+          />
+          <div className="flex items-center justify-between gap-2 border-t border-navy-100 px-3 py-2 dark:border-white/10">
+            <span className="truncate text-xs text-navy-500 dark:text-white/50">
               {value?.name} ({(value?.size / 1024).toFixed(0)} KB)
             </span>
             <Button
@@ -82,13 +87,13 @@ export default function ImageUploader({
           </div>
           {uploading || progress > 0 ? (
             <div className="px-3 pb-3">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-navy-100">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-navy-100 dark:bg-white/10">
                 <div
                   className="h-full rounded-full bg-primary-500 transition-all"
                   style={{ width: `${Math.min(100, progress || 0)}%` }}
                 />
               </div>
-              <p className="mt-1 text-xs font-medium text-navy-500">
+              <p className="mt-1 text-xs font-medium text-navy-500 dark:text-white/50">
                 {uploading ? <Loader2 className="mr-1 inline h-3 w-3 animate-spin" aria-hidden="true" /> : null}
                 Uploading… {progress || 0}%
               </p>
@@ -100,11 +105,11 @@ export default function ImageUploader({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={disabled || uploading}
-          className="mt-2 flex w-full flex-col items-center justify-center gap-2 rounded-card border border-dashed border-navy-300 bg-canvas px-4 py-8 text-center transition hover:border-primary-400 hover:bg-primary-50/50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 flex w-full flex-col items-center justify-center gap-2 rounded-card border border-dashed border-navy-300 bg-canvas px-4 py-8 text-center transition hover:border-primary-400 hover:bg-primary-50/50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-white/[0.03] dark:hover:border-primary-400 dark:hover:bg-white/[0.06]"
         >
-          <ImagePlus className="h-6 w-6 text-navy-400" aria-hidden="true" />
-          <span className="text-sm font-semibold text-navy-700">Tap to choose a photo</span>
-          <span className="text-xs text-navy-400">
+          <ImagePlus className="h-6 w-6 text-navy-400 dark:text-white/40" aria-hidden="true" />
+          <span className="text-sm font-semibold text-navy-700 dark:text-white">Tap to choose a photo</span>
+          <span className="text-xs text-navy-400 dark:text-white/35">
             JPG, PNG, WEBP or GIF · up to {IMAGE_UPLOAD.maxBytesLabel}
           </span>
         </button>
@@ -120,11 +125,11 @@ export default function ImageUploader({
       />
 
       {message ? (
-        <p role="alert" className="mt-1.5 text-xs font-medium text-danger-600">
+        <p role="alert" className="mt-1.5 text-xs font-medium text-danger-600 dark:text-danger-200">
           {message}
         </p>
       ) : hint ? (
-        <p className="mt-1.5 text-xs text-navy-400">{hint}</p>
+        <p className="mt-1.5 text-xs text-navy-400 dark:text-white/35">{hint}</p>
       ) : null}
     </div>
   );

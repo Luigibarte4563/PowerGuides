@@ -1,6 +1,6 @@
 /** Shared constants and design-token helpers. */
 
-import { DEFAULT_CENTER, distanceInMeters } from './formatters';
+import { DEFAULT_CENTER, distanceInMeters } from './formatters.js';
 
 export const APP_NAME = 'PowerGuide Dagupan';
 export const APP_TAGLINE = 'Report. Track. Stay safe.';

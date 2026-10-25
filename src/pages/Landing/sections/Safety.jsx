@@ -47,7 +47,7 @@ export default function Safety() {
         <ul className="grid gap-4 sm:grid-cols-2">
           {TIPS.map((tip) => (
             <li key={tip.title} className="rounded-card border border-navy-100 bg-canvas p-5">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-control bg-white text-danger-600 shadow-card">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-control bg-danger-500/15 text-danger-400">
                 <tip.icon className="h-5 w-5" aria-hidden="true" />
               </span>
               <h3 className="mt-3 text-sm font-bold text-navy-900">{tip.title}</h3>

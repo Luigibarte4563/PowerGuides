@@ -297,13 +297,13 @@ export default function MaintenanceFormModal({ open, schedule, onClose, onSaved 
       </div>
 
       <fieldset>
-        <legend className="text-sm font-semibold text-navy-800">
+        <legend className="text-sm font-semibold text-navy-800 dark:text-navy-100">
           Affected barangays
           <span className="ml-0.5 text-danger-600" aria-hidden="true">
             *
           </span>
         </legend>
-        <p className="mt-1 text-xs text-navy-400">
+        <p className="mt-1 text-xs text-navy-400 dark:text-navy-500">
           Each selected barangay uses its stored coordinates for the maintenance map.
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -317,8 +317,8 @@ export default function MaintenanceFormModal({ open, schedule, onClose, onSaved 
                 aria-pressed={selected}
                 className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                   selected
-                    ? 'border-primary-400 bg-primary-100 text-primary-800'
-                    : 'border-navy-200 bg-white text-navy-600 hover:bg-navy-50'
+                    ? 'border-primary-400 bg-primary-100 text-primary-800 dark:border-primary-500/40 dark:bg-primary-500/15 dark:text-primary-300'
+                    : 'border-navy-200 bg-white text-navy-600 hover:bg-navy-50 dark:border-navy-600 dark:bg-navy-800 dark:text-navy-300 dark:hover:bg-navy-700'
                 }`}
               >
                 {option.name}

@@ -43,9 +43,9 @@ import { toUserMessage } from '@/utils/errorMessage';
  */
 const LAYERS = [
   { key: 'heatmap', label: 'Outage heatmap', icon: Flame, color: HEAT_GRADIENT[0.6] },
-  { key: 'clusters', label: 'Outage clusters', icon: Layers, color: '#D97706' },
-  { key: 'floods', label: 'Flood reports', icon: Waves, color: '#2563EB' },
-  { key: 'hazards', label: 'Electrical hazards', icon: AlertTriangle, color: '#DC2626' },
+  { key: 'clusters', label: 'Outage clusters', icon: Layers, color: '#F59E0B' },
+  { key: 'floods', label: 'Flood reports', icon: Waves, color: '#22D3EE' },
+  { key: 'hazards', label: 'Electrical hazards', icon: AlertTriangle, color: '#FF2E1F' },
 ];
 
 const CLOSED_FLOOD_STATUSES = ['cleared'];
@@ -233,7 +233,7 @@ export default function MapRisk() {
 
               {probe ? <MapView center={probe} zoom={14} /> : null}
               {probe ? (
-                <MapCircle center={probe} radius={probeRadius} color="#2563EB" fillOpacity={0.06} />
+                <MapCircle center={probe} radius={probeRadius} color="#22D3EE" fillOpacity={0.06} />
               ) : null}
 
               <MapLegend

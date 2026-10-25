@@ -6,12 +6,12 @@ import { NOTIFICATION_TYPE_TONES, notificationBody } from '@/utils/notifications
 import { formatDateTime, formatRelativeTime, humanize } from '@/utils/formatters';
 
 const ICON_TONES = {
-  primary: 'bg-primary-100 text-primary-700',
-  info: 'bg-info-50 text-info-700',
-  success: 'bg-success-50 text-success-700',
-  warning: 'bg-warning-50 text-warning-700',
-  danger: 'bg-danger-50 text-danger-700',
-  navy: 'bg-navy-100 text-navy-700',
+  primary: 'bg-primary-100 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300',
+  info: 'bg-info-50 text-info-700 dark:bg-info-500/15 dark:text-info-200',
+  success: 'bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-200',
+  warning: 'bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-200',
+  danger: 'bg-danger-50 text-danger-700 dark:bg-danger-500/15 dark:text-danger-200',
+  navy: 'bg-navy-100 text-navy-700 dark:bg-navy-700 dark:text-navy-200',
 };
 
 /**

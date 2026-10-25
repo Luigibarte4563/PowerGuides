@@ -1,21 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Crosshair, MapPin, Pencil, Plug, Plus, Trash2 } from 'lucide-react';
-import PageHeader from '@/components/layout/PageHeader';
-import Tabs from '@/components/ui/Tabs';
+import { ZoomControl } from 'react-leaflet';
+import { CheckCircle2, Crosshair, MapPin, Pencil, Plug, Plus, Trash2 } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Card, CardBody } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { TBody, TD, TH, THead, TR, Table } from '@/components/ui/Table';
-import { InfoNote } from '@/components/ui/Alert';
 import DataView from '@/components/DataView';
 import RecordCard from '@/components/RecordCard';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Pagination from '@/components/Pagination';
 import AppMap, { FitPoints, MapLegend, MapPoints } from '@/components/Map';
-import MapWorkspace from '@/components/MapWorkspace';
+import MapWorkspace, { FeedActions, FeedPills, FeedToggle } from '@/components/MapWorkspace';
 import { useAuth } from '@/context/AuthContext';
 import { useReference } from '@/context/ReferenceContext';
 import { useToast } from '@/context/ToastContext';
@@ -30,22 +24,9 @@ import {
   availabilityTone,
 } from '@/utils/constants';
 import { readStation } from '@/utils/records';
-import { formatDateTime, formatDistance, humanize } from '@/utils/formatters';
+import { formatDateTime, formatDistance, formatTime, humanize } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
 import PowerStationFormModal from './components/PowerStationFormModal';
-
-const TABS = [
-  { value: 'all', label: 'All stations', icon: Plug },
-  { value: 'near', label: 'Near my location', icon: Crosshair },
-  { value: 'mine', label: 'My stations', icon: MapPin },
-];
-
-const AVAILABILITY_OPTIONS = [
-  { value: 'available', label: 'Available' },
-  { value: 'busy', label: 'Busy' },
-  { value: 'offline', label: 'Offline' },
-  { value: 'maintenance', label: 'Under maintenance' },
-];
 
 /**
  * Module PWR - power stations (FR-PWR-1 .. FR-PWR-6).
@@ -80,7 +61,7 @@ export default function PowerStations() {
   const [deleting, setDeleting] = useState(null);
   const debouncedSearch = useDebouncedValue(search);
 
-  const { coords: savedCoords, hasLocation } = useSavedLocation();
+  const { hasLocation } = useSavedLocation();
 
   const listQuery = useQuery({
     queryKey: COMPANY_QUERY_KEYS.powerStations({ page: 1, limit: 100 }),
@@ -159,14 +140,10 @@ export default function PowerStations() {
     },
   });
 
-  const stationMap =
-    all.length === 0 ? (
-      <p className="h-full overflow-y-auto p-8 text-center text-sm text-navy-500">
-        {listQuery.isLoading ? 'Loading power stations…' : 'No power stations have been registered yet.'}
-      </p>
-    ) : (
-      <AppMap zoom={12} className="h-full w-full">
-        <FitPoints items={all} />
+  const stationMap = (
+    <AppMap zoom={12} zoomControl={false} className="h-full w-full">
+      <ZoomControl position="bottomright" />
+      <FitPoints items={all} />
         <MapPoints
           items={all}
           toneFor={(station) =>
@@ -204,122 +181,111 @@ export default function PowerStations() {
           ]}
         />
       </AppMap>
-    );
+  );
+
+  const availableCount = all.filter(
+    (station) => String(station.availability ?? '').toLowerCase() === 'available'
+  ).length;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Power Stations"
-        description="Registered stations, their availability, and the ones this account owns."
+    <div
+      data-theme="dark"
+      className="min-h-full bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
+      <FeedActions
         actions={
           mine.length === 0 ? (
-            <Button variant="primary" icon={Plus} onClick={() => setFormOpen(true)}>
+            <Button
+              variant="primary"
+              icon={Plus}
+              onClick={() => setFormOpen(true)}
+              className="rounded-xl px-5 shadow-[0_8px_24px_rgba(255,187,2,0.18)]"
+            >
               Add power station
             </Button>
           ) : null
         }
-      />
-
-      <Tabs
-        tabs={TABS.map((item) => ({
-          ...item,
-          count:
-            item.value === 'mine'
-              ? mine.length
-              : item.value === 'near'
-                ? nearQuery.data
-                  ? near.length
-                  : undefined
-                : all.length,
-        }))}
-        value={tab}
-        onChange={(value) => {
-          setTab(value);
+        search={search}
+        onSearchChange={(value) => {
+          setSearch(value);
           setPage(1);
         }}
-        ariaLabel="Station scope"
+        onClearSearch={() => {
+          setSearch('');
+          setPage(1);
+        }}
+        searchId="company-station-search"
+        searchLabel="Search power stations"
+        searchPlaceholder="Search name, address, barangay…"
       />
-
-      <Card>
-        <CardBody className="grid gap-3 sm:grid-cols-3">
-          <Input
-            label="Search"
-            placeholder="Name, address or barangay"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-          />
-          <Select
-            label="Availability"
-            options={AVAILABILITY_OPTIONS}
-            placeholder="Any availability"
-            value={availability}
-            onChange={(event) => {
-              setAvailability(event.target.value);
-              setPage(1);
-            }}
-          />
-          <div className="flex items-end">
-            <Button
-              variant="outline"
-              fullWidth
-              onClick={() => {
-                setSearch('');
-                setAvailability('');
-                setPage(1);
-              }}
-              disabled={!search && !availability}
-            >
-              Clear filters
-            </Button>
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* FR-PWR-6 - only meaningful for the near tab, and only that tab can change it. */}
-      {tab === 'near' ? (
-        <Card>
-          <CardBody className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-navy-600">Search radius</span>
-              {RADIUS_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    setRadius(option.value);
-                    setPage(1);
-                  }}
-                  aria-pressed={radius === option.value}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
-                    radius === option.value
-                      ? 'border-primary-400 bg-primary-100 text-primary-800'
-                      : 'border-navy-200 bg-white text-navy-600 hover:bg-navy-50'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            <InfoNote>
-              The API centres this search on your account&rsquo;s saved primary location, not on
-              the map, so it has no point to pick. Results come back with a distance and are
-              listed nearest first
-              {savedCoords
-                ? ` from ${savedCoords.lat.toFixed(4)}, ${savedCoords.lng.toFixed(4)}.`
-                : '.'}
-            </InfoNote>
-          </CardBody>
-        </Card>
-      ) : null}
 
       <MapWorkspace
         map={stationMap}
-        mapTitle="Station map"
-        mapDescription={`${all.length} station${all.length === 1 ? '' : 's'} across Dagupan.`}
+        mapLabel="Station map"
+        mapTitle="Station Feed"
+        mapSubtitle={`${all.length} station${all.length === 1 ? '' : 's'} across Dagupan${
+          listQuery.dataUpdatedAt ? ` · updated ${formatTime(listQuery.dataUpdatedAt)}` : ''
+        }`}
+        toggle={
+          <FeedToggle
+            ariaLabel="Station scope"
+            value={tab}
+            onChange={(value) => {
+              setTab(value);
+              setPage(1);
+            }}
+            options={[
+              { value: 'all', label: 'All stations', count: all.length },
+              {
+                value: 'near',
+                label: 'Near my location',
+                count: nearQuery.data ? near.length : undefined,
+              },
+              { value: 'mine', label: 'My stations', count: mine.length },
+            ]}
+          />
+        }
+        stats={[
+          { label: 'Stations', value: all.length, icon: Plug, color: '#22D3EE' },
+          { label: 'Available', value: availableCount, icon: CheckCircle2, color: '#34FB34' },
+          { label: 'Mine', value: mine.length, icon: MapPin, color: '#FFBB02' },
+        ]}
+        pills={
+          <>
+            <FeedPills
+              ariaLabel="Filter by availability"
+              value={availability || 'all'}
+              onChange={(value) => {
+                setAvailability(value === 'all' ? '' : value);
+                setPage(1);
+              }}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'available', label: 'Available' },
+                { value: 'busy', label: 'Busy' },
+                { value: 'offline', label: 'Offline' },
+                { value: 'maintenance', label: 'Maintenance' },
+              ]}
+            />
+            {/* FR-PWR-6 - the radius only matters on the near tab. */}
+            {tab === 'near' ? (
+              <FeedPills
+                ariaLabel="Search radius"
+                value={String(radius)}
+                onChange={(value) => {
+                  setRadius(Number(value));
+                  setPage(1);
+                }}
+                options={RADIUS_OPTIONS}
+              />
+            ) : null}
+          </>
+        }
+        plottedCount={all.length}
+        mapEmpty={!listQuery.isLoading && !listQuery.isError && all.length === 0}
+        mapEmptyLabel="No mapped stations yet"
       >
+        <div className="space-y-3">
         <DataView
           isLoading={activeQuery.isLoading}
           error={activeQuery.isError}
@@ -369,97 +335,19 @@ export default function PowerStations() {
               actions={stationActions(station, user, setEditing, setFormOpen, setDeleting)}
             />
           )}
-          renderTable={(visible) => (
-            <div className="rounded-card border border-navy-100 bg-white shadow-card">
-              <Table>
-                <THead>
-                  <tr>
-                    <TH>Name</TH>
-                    <TH>Barangay</TH>
-                    <TH>Type</TH>
-                    <TH>Access</TH>
-                    <TH>Availability</TH>
-                    {tab === 'near' ? <TH>Distance</TH> : null}
-                    <TH>Registered</TH>
-                    <TH align="right">Actions</TH>
-                  </tr>
-                </THead>
-                <TBody>
-                  {visible.map((station) => (
-                    <TR key={station.id}>
-                      <TD>
-                        <span className="font-semibold text-navy-900">{station.name}</span>
-                        {station.locationName ? (
-                          <p className="mt-0.5 max-w-xs truncate text-xs text-navy-500">
-                            {station.locationName}
-                          </p>
-                        ) : null}
-                      </TD>
-                      <TD className="text-sm">{station.barangay || '—'}</TD>
-                      <TD className="text-sm">{humanize(station.type, '—')}</TD>
-                      <TD className="text-sm">{humanize(station.accessType, '—')}</TD>
-                      <TD>
-                        <Badge tone={availabilityTone(station.availability)}>
-                          {humanize(station.availability, 'Unknown')}
-                        </Badge>
-                      </TD>
-                      {tab === 'near' ? (
-                        <TD className="whitespace-nowrap text-sm font-semibold text-navy-700">
-                          {station.distance === null ? '—' : formatDistance(station.distance)}
-                        </TD>
-                      ) : null}
-                      <TD className="whitespace-nowrap text-xs text-navy-500">
-                        {formatDateTime(station.createdAt)}
-                      </TD>
-                      <TD align="right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {station.createdBy === Number(user?.id) ? (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                icon={Pencil}
-                                onClick={() => {
-                                  setEditing(station);
-                                  setFormOpen(true);
-                                }}
-                                aria-label={`Edit ${station.name}`}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                icon={Trash2}
-                                className="text-danger-600"
-                                onClick={() => setDeleting(station)}
-                                aria-label={`Delete ${station.name}`}
-                              >
-                                Delete
-                              </Button>
-                            </>
-                          ) : (
-                            <span className="text-xs text-navy-300">Other account</span>
-                          )}
-                        </div>
-                      </TD>
-                    </TR>
-                  ))}
-                </TBody>
-              </Table>
-              <Pagination
-                page={page}
-                pageCount={pageCount}
-                total={rows.length}
-                pageSize={COMPANY_PAGE_SIZE}
-                onChange={setPage}
-              />
-            </div>
-          )}
         />
+
+          <Pagination
+            page={page}
+            pageCount={pageCount}
+            total={rows.length}
+            pageSize={COMPANY_PAGE_SIZE}
+            onChange={setPage}
+          />
+        </div>
       </MapWorkspace>
 
-      <p className="text-xs text-navy-400">
+      <p className="mt-4 text-[10px] leading-relaxed text-white/40">
         The API allows one station per account, and only the account that created a station can
         edit or delete it. The near tab searches around your saved location, which lives on your
         resident account rather than on this dashboard.

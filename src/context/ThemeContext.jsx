@@ -1,78 +1,30 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 
 /**
- * Light / dark theme.
+ * Theme: permanently dark.
  *
- * The choice is persisted in localStorage and applied as `data-theme` on <html>
- * rather than a `dark` class on <body>, so it also reaches portals (modals,
- * toasts) and Leaflet panes, which live outside the app root.
- *
- * The same resolution runs once inline in index.html before React boots; the
- * key and the browser-preference fallback are shared with that script so the
- * first paint matches the stored choice and there is no flash.
+ * The app is standardised on the Outages workspace look (#03041A canvas), so
+ * `data-theme="dark"` is applied unconditionally on <html> - including portals
+ * (modals, toasts) and Leaflet panes, which live outside the app root. The
+ * context keeps its original shape (`theme`, `isDark`, `setTheme`, `toggleTheme`)
+ * so existing consumers keep working; the toggle is a no-op.
  */
-const STORAGE_KEY = 'powerguide.theme';
-
 const ThemeContext = createContext(null);
 
-function prefersDark() {
-  return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-    ? window.matchMedia('(prefers-color-scheme: dark)').matches
-    : false;
-}
-
-function readStoredTheme() {
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    return stored === 'dark' || stored === 'light' ? stored : null;
-  } catch {
-    // Private mode / storage disabled: fall back to the OS preference.
-    return null;
-  }
-}
-
-function applyTheme(theme) {
+function applyTheme() {
   const root = document.documentElement;
-  root.dataset.theme = theme;
+  root.dataset.theme = 'dark';
 
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0B1524' : '#F6F7F9');
+  if (meta) meta.setAttribute('content', '#03041A');
 }
 
+applyTheme();
+
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => readStoredTheme() || (prefersDark() ? 'dark' : 'light'));
-
-  useEffect(() => {
-    applyTheme(theme);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, theme);
-    } catch {
-      /* private mode: the theme just resets on reload */
-    }
-  }, [theme]);
-
-  /*
-   * Only follow the OS while the user has never picked a theme themselves.
-   * Once toggled, the explicit choice wins and stays put.
-   */
-  useEffect(() => {
-    if (typeof window.matchMedia !== 'function') return undefined;
-    const query = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (event) => {
-      if (readStoredTheme()) return;
-      setTheme(event.matches ? 'dark' : 'light');
-    };
-    query.addEventListener('change', handleChange);
-    return () => query.removeEventListener('change', handleChange);
-  }, []);
-
-  const toggleTheme = useCallback(() => {
-    setTheme((current) => (current === 'dark' ? 'light' : 'dark'));
-  }, []);
-
   const value = useMemo(
-    () => ({ theme, isDark: theme === 'dark', setTheme, toggleTheme }),
-    [theme, toggleTheme]
+    () => ({ theme: 'dark', isDark: true, setTheme: applyTheme, toggleTheme: applyTheme }),
+    []
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

@@ -59,12 +59,12 @@ function BaseLayer() {
 }
 
 const PIN_COLORS = {
-  primary: '#F59E0B',
-  danger: '#DC2626',
-  warning: '#D97706',
-  success: '#059669',
-  info: '#2563EB',
-  neutral: '#33415C',
+  primary: '#FFBB02',
+  danger: '#FF2E1F',
+  warning: '#F59E0B',
+  success: '#34FB34',
+  info: '#22D3EE',
+  neutral: '#9CA3AF',
 };
 
 /**
@@ -190,7 +190,9 @@ export default function AppMap({
       center={initialView.center}
       zoom={initialView.zoom}
       scrollWheelZoom={scrollWheelZoom}
-      className={className}
+      // The app is permanently dark; pg-dark-map skins Leaflet controls and
+      // popups to match. clsx merges it with the caller's size classes.
+      className={clsx('pg-dark-map', className)}
       {...rest}
     >
       <BaseLayer />
@@ -363,7 +365,7 @@ export function FitPoints({ items = [], padding = 56, maxZoom = 16, animate = tr
 }
 
 /** "Near me" search radius. */
-export function RadiusCircle({ center, radius, color = '#2563EB' }) {
+export function RadiusCircle({ center, radius, color = '#22D3EE' }) {
   const lat = Number(center?.lat);
   const lng = Number(center?.lng ?? center?.lon);
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number(radius)) return null;
@@ -385,7 +387,7 @@ export function RadiusCircle({ center, radius, color = '#2563EB' }) {
  * be an explicit `<Popup>` child for `bindPopup` to be called, and that is easy to get
  * wrong, so callers get one component with a `children`-means-popup contract.
  */
-export function MapCircle({ center, radius, color = '#D97706', fillColor, fillOpacity = 0.18, weight = 1.5, children }) {
+export function MapCircle({ center, radius, color = '#F59E0B', fillColor, fillOpacity = 0.18, weight = 1.5, children }) {
   const lat = Number(center?.lat);
   const lng = Number(center?.lng ?? center?.lon);
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number(radius)) return null;
@@ -407,11 +409,11 @@ export function MapCircle({ center, radius, color = '#D97706', fillColor, fillOp
  * by the pixel alpha, so a pale stop renders as a pale wash.
  */
 export const HEAT_GRADIENT = {
-  0.2: '#F59E0B',
-  0.4: '#F97316',
-  0.6: '#EA580C',
-  0.8: '#DC2626',
-  1: '#991B1B',
+  0.2: '#FFBB02',
+  0.4: '#FF8A00',
+  0.6: '#FF5510',
+  0.8: '#FF2E1F',
+  1: '#C81E10',
 };
 
 /** Legend rows derived from `HEAT_GRADIENT`. */
@@ -476,24 +478,29 @@ export function HeatLayer({
   return null;
 }
 
-/** Small legend rendered over the map (bottom-left by default). */
+/**
+ * Small legend rendered over the map (bottom-left by default), styled as the
+ * Outages glass overlay so every map carries the same legend treatment.
+ */
 export function MapLegend({ items = [], title, className, position = 'bottom' }) {
   if (!items.length) return null;
 
   return (
     <div
       className={clsx(
-        'absolute z-[400] rounded-card border border-navy-100 bg-white/95 p-3 shadow-card',
+        'absolute z-[400] rounded-2xl border border-white/10 bg-[#0B0D20]/80 p-3 shadow-2xl backdrop-blur-md',
         position === 'top' ? 'left-3 top-3' : 'bottom-3 left-3',
         className
       )}
     >
-      {title ? <p className="mb-2 text-xs font-bold text-navy-800">{title}</p> : null}
+      {title ? (
+        <p className="mb-2 text-[8px] font-extrabold uppercase tracking-[0.2em] text-white/35">{title}</p>
+      ) : null}
       <ul className="space-y-1.5">
         {items.map((item) => (
-          <li key={item.label} className="flex items-center gap-2 text-xs font-medium text-navy-700">
+          <li key={item.label} className="flex items-center gap-2 text-[9px] font-medium text-white/55">
             <PinSwatch
-              className="h-5 w-5 shrink-0"
+              className="h-3.5 w-3.5 shrink-0"
               color={item.color || PIN_COLORS[item.tone] || PIN_COLORS.primary}
             />
             {item.label}

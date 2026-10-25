@@ -7,11 +7,14 @@ const CONTROL_BASE =
 const CONTROL_ERROR = 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/40 dark:border-danger-500/60';
 
 /** Field wrapper: label, hint, error message and required marker. */
-export function Field({ label, htmlFor, hint, error, required, children, className }) {
+export function Field({ label, htmlFor, hint, error, required, children, className, labelClassName }) {
   return (
     <div className={clsx('space-y-1.5', className)}>
       {label ? (
-        <label htmlFor={htmlFor} className="block text-sm font-semibold text-navy-800 dark:text-navy-100">
+        <label
+          htmlFor={htmlFor}
+          className={clsx('block text-sm font-semibold text-navy-800 dark:text-navy-100', labelClassName)}
+        >
           {label}
           {required ? (
             <span className="ml-0.5 text-danger-600 dark:text-danger-200" aria-hidden="true">
@@ -35,7 +38,7 @@ export function Field({ label, htmlFor, hint, error, required, children, classNa
 }
 
 export const Input = forwardRef(function Input(
-  { label, hint, error, required, className, id, wrapperClassName, ...rest },
+  { label, hint, error, required, className, id, wrapperClassName, labelClassName, ...rest },
   ref
 ) {
   const generatedId = useId();
@@ -49,6 +52,7 @@ export const Input = forwardRef(function Input(
       error={error}
       required={required}
       className={wrapperClassName}
+      labelClassName={labelClassName}
     >
       <input
         ref={ref}
@@ -63,7 +67,7 @@ export const Input = forwardRef(function Input(
 });
 
 export const Textarea = forwardRef(function Textarea(
-  { label, hint, error, required, className, id, rows = 4, wrapperClassName, ...rest },
+  { label, hint, error, required, className, id, rows = 4, wrapperClassName, labelClassName, ...rest },
   ref
 ) {
   const generatedId = useId();
@@ -77,6 +81,7 @@ export const Textarea = forwardRef(function Textarea(
       error={error}
       required={required}
       className={wrapperClassName}
+      labelClassName={labelClassName}
     >
       <textarea
         ref={ref}
@@ -93,7 +98,7 @@ export const Textarea = forwardRef(function Textarea(
 
 /** Password field with a show/hide toggle. */
 export const PasswordInput = forwardRef(function PasswordInput(
-  { label, hint, error, required, className, id, wrapperClassName, ...rest },
+  { label, hint, error, required, className, id, wrapperClassName, labelClassName, ...rest },
   ref
 ) {
   const generatedId = useId();
@@ -108,6 +113,7 @@ export const PasswordInput = forwardRef(function PasswordInput(
       error={error}
       required={required}
       className={wrapperClassName}
+      labelClassName={labelClassName}
     >
       <div className="relative">
         <input

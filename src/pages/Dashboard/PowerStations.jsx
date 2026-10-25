@@ -1,18 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Crosshair, Pencil, Plug, Plus, Trash2 } from 'lucide-react';
-import PageHeader from '@/components/layout/PageHeader';
-import Tabs from '@/components/ui/Tabs';
+import { ZoomControl } from 'react-leaflet';
+import { CheckCircle2, MapPin, Pencil, Plug, Plus, Trash2 } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import DataView from '@/components/DataView';
 import RecordCard from '@/components/RecordCard';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import AppMap, { FitPoints, MapLegend, MapPoints, RadiusCircle } from '@/components/Map';
-import MapWorkspace from '@/components/MapWorkspace';
+import MapWorkspace, { FeedActions, FeedPills, FeedToggle } from '@/components/MapWorkspace';
 import { useAuth } from '@/context/AuthContext';
 import { useReference } from '@/context/ReferenceContext';
 import { useToast } from '@/context/ToastContext';
@@ -22,16 +19,9 @@ import { powerStationsApi } from '@/api';
 import { QUERY_KEYS } from '@/utils/constants';
 import { readStation } from '@/utils/records';
 import { DEFAULT_RADIUS_METERS, RADIUS_OPTIONS, availabilityTone } from '@/utils/constants';
-import { formatDateTime, formatDistance, humanize } from '@/utils/formatters';
+import { formatDateTime, formatDistance, formatTime, humanize } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
 import PowerStationFormModal, { STATION_TYPES } from './components/PowerStationFormModal';
-
-const TABS = [
-  { value: 'all', label: 'All stations', icon: Plug },
-  { value: 'available', label: 'Available', icon: Crosshair },
-  { value: 'near', label: 'Near my location', icon: Crosshair },
-  { value: 'mine', label: 'My post', icon: Plug },
-];
 
 /**
  * Module D - power stations.
@@ -130,7 +120,8 @@ export default function PowerStations() {
   const isEmpty = tab === 'near' && !hasLocation ? true : items.length === 0;
 
   const stationMap = (
-    <AppMap center={coords || undefined} zoom={coords ? 13 : undefined} className="h-full w-full">
+    <AppMap center={coords || undefined} zoom={coords ? 13 : undefined} zoomControl={false} className="h-full w-full">
+      <ZoomControl position="bottomright" />
       <FitPoints items={items} />
       {hasLocation ? <RadiusCircle center={coords} radius={tab === 'near' ? radius : 2000} /> : null}
       <MapPoints items={items} toneFor={(item) => availabilityTone(item.availability)}>
@@ -166,103 +157,103 @@ export default function PowerStations() {
   );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Power Stations"
-        description={
-          myStation
-            ? 'You have one station post. Keep its availability up to date for your neighbours.'
-            : 'Browse power stations, check availability and add your own post.'
-        }
+    <div
+      data-theme="dark"
+      className="min-h-full bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
+      <FeedActions
         actions={
           <Button
             variant="primary"
             icon={myStation ? Pencil : Plus}
             onClick={openCreate}
             loading={mineQuery.isLoading}
+            className="rounded-xl px-5 shadow-[0_8px_24px_rgba(255,187,2,0.18)]"
           >
             {myStation ? 'Edit my station' : 'Post a station'}
           </Button>
         }
-      />
-
-      <Tabs
-        tabs={TABS.map((item) =>
-          item.value === 'available' ? { ...item, count: availableCountQuery.data } : item
-        )}
-        value={tab}
-        onChange={setTab}
-        ariaLabel="Power station filters"
+        search={search}
+        onSearchChange={setSearch}
+        onClearSearch={() => setSearch('')}
+        searchId="station-search"
+        searchLabel="Search power stations"
+        searchPlaceholder="Search name, location, type…"
       />
 
       <MapWorkspace
-        map={items.length ? stationMap : null}
-        mapTitle="Station map"
-        mapDescription={`${items.length} station${items.length === 1 ? '' : 's'} plotted. Click a pin for details.`}
-      >
-      <Card>
-        <CardBody className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Input
-            label="Search"
-            placeholder="Search stations"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <Select
-            label="Station type"
-            placeholder="All types"
-            options={STATION_TYPES}
-            value={typeFilter}
-            onChange={(event) => setTypeFilter(event.target.value)}
-          />
-          <Select
-            label="Availability"
-            placeholder="Any availability"
+        map={stationMap}
+        mapLabel="Station map"
+        mapTitle="Live Station Feed"
+        mapSubtitle={`${items.length} station${items.length === 1 ? '' : 's'} in view${
+          activeQuery.dataUpdatedAt ? ` · updated ${formatTime(activeQuery.dataUpdatedAt)}` : ''
+        }`}
+        toggle={
+          <FeedToggle
+            ariaLabel="Station scope"
+            value={tab}
+            onChange={setTab}
             options={[
-              { id: 'available', name: 'Available' },
-              { id: 'busy', name: 'Busy' },
-              { id: 'offline', name: 'Offline' },
-              { id: 'maintenance', name: 'Under maintenance' },
+              { value: 'all', label: 'All stations', count: (allQuery.data || []).length },
+              { value: 'available', label: 'Available', count: availableCountQuery.data },
+              {
+                value: 'near',
+                label: 'Near my location',
+                count: Array.isArray(nearQuery.data) ? nearQuery.data.length : undefined,
+              },
+              { value: 'mine', label: 'My post', count: (mineQuery.data || []).length },
             ]}
-            value={availabilityFilter}
-            onChange={(event) => setAvailabilityFilter(event.target.value)}
           />
-          {tab === 'near' ? (
+        }
+        stats={[
+          { label: 'Stations', value: items.length, icon: Plug, color: '#22D3EE' },
+          {
+            label: 'Available',
+            value: availableCountQuery.data ?? items.filter((item) => item.availability === 'available').length,
+            icon: CheckCircle2,
+            color: '#34FB34',
+          },
+          { label: 'My post', value: myStation ? 1 : 0, icon: MapPin, color: '#FFBB02' },
+        ]}
+        pills={
+          <FeedPills
+            ariaLabel="Filter by availability"
+            value={availabilityFilter || 'all'}
+            onChange={(value) => setAvailabilityFilter(value === 'all' ? '' : value)}
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'available', label: 'Available' },
+              { value: 'busy', label: 'Busy' },
+              { value: 'offline', label: 'Offline' },
+              { value: 'maintenance', label: 'Maintenance' },
+            ]}
+          />
+        }
+        filters={
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
             <Select
-              label="Radius"
-              options={RADIUS_OPTIONS}
-              value={String(radius)}
-              onChange={(event) => setRadius(Number(event.target.value))}
-              hint="Centred on your saved location."
+              aria-label="Filter by station type"
+              placeholder="All types"
+              options={STATION_TYPES}
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value)}
+              className="h-9 py-0 text-xs"
             />
-          ) : (
-            <div className="flex items-end">
-              <Button
-                variant="outline"
-                fullWidth
-                onClick={() => {
-                  setSearch('');
-                  setTypeFilter('');
-                  setAvailabilityFilter('');
-                }}
-              >
-                Clear filters
-              </Button>
-            </div>
-          )}
-        </CardBody>
-      </Card>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-navy-500">
-          {activeQuery.isLoading
-            ? 'Loading stations…'
-            : `${items.length} station${items.length === 1 ? '' : 's'}${
-                tab === 'near' && hasLocation ? ` within ${formatDistance(radius)}` : ''
-              }`}
-        </p>
-      </div>
-
+            {tab === 'near' ? (
+              <Select
+                aria-label="Search radius"
+                options={RADIUS_OPTIONS}
+                value={String(radius)}
+                onChange={(event) => setRadius(Number(event.target.value))}
+                className="h-9 py-0 text-xs"
+              />
+            ) : null}
+          </div>
+        }
+        plottedCount={items.length}
+        mapEmpty={!activeQuery.isLoading && !activeQuery.isError && items.length === 0}
+        mapEmptyLabel="No mapped stations yet"
+      >
         <DataView
           isLoading={activeQuery.isLoading}
           error={activeQuery.isError}

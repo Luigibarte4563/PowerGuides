@@ -4,6 +4,7 @@ import { BadgeCheck, CheckCircle2, MapPinned, Users } from 'lucide-react';
 import AuthShell, { AuthAlert, AuthDivider, GoogleButton } from './AuthShell';
 import { Button } from '@/components/ui/Button';
 import { Input, PasswordInput } from '@/components/ui/Input';
+import Modal from '@/components/ui/Modal';
 import { useAuth } from '@/context/AuthContext';
 import { landingPathFor } from '@/utils/roles';
 import { toFieldErrors, toUserMessage } from '@/utils/errorMessage';
@@ -37,6 +38,8 @@ export default function Register() {
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
 
   const strength = useMemo(() => passwordStrength(values.password), [values.password]);
 
@@ -198,19 +201,125 @@ export default function Register() {
           error={errors.confirmPassword}
         />
 
-        <Button type="submit" size="lg" fullWidth loading={submitting}>
+        {/* Registration is gated on consent: the submit button stays disabled
+            until the terms are accepted. */}
+        <label className="flex cursor-pointer items-start gap-3 text-sm text-navy-600">
+          <input
+            type="checkbox"
+            name="terms"
+            checked={agreed}
+            onChange={(event) => setAgreed(event.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-navy-300 text-primary-500 focus:ring-primary-500"
+          />
+          <span>
+            I have read and agree to the{' '}
+            <button
+              type="button"
+              onClick={() => setTermsOpen(true)}
+              className="rounded font-semibold text-primary-600 underline transition hover:text-primary-400"
+            >
+              Terms and Conditions
+            </button>
+            .
+          </span>
+        </label>
+
+        <Button type="submit" size="lg" fullWidth loading={submitting} disabled={!agreed}>
           {submitting ? 'Creating your account…' : 'Create account'}
         </Button>
-
-        <p className="text-center text-xs text-navy-400">
-          By registering you agree to report only incidents you have observed.
-        </p>
       </form>
 
       <AuthDivider />
 
       <GoogleButton text="Sign up with Google" redirectTo="/dashboard" />
+
+      <TermsModal
+        open={termsOpen}
+        onClose={() => setTermsOpen(false)}
+        onAgree={() => {
+          setAgreed(true);
+          setTermsOpen(false);
+        }}
+      />
     </AuthShell>
+  );
+}
+
+/** The consent text behind the "Terms and Conditions" link on the register form. */
+function TermsModal({ open, onClose, onAgree }) {
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Terms and Conditions"
+      description="PowerGuide Dagupan - community reporting service"
+      size="lg"
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+          <Button onClick={onAgree}>Agree and continue</Button>
+        </>
+      }
+    >
+      <div className="space-y-4 text-sm leading-relaxed text-navy-600">
+        <section>
+          <h3 className="text-sm font-bold text-navy-900">1. What PowerGuide is</h3>
+          <p className="mt-1">
+            PowerGuide Dagupan is a crowdsourced community service for reporting and tracking power
+            outages, flooding and electrical hazards. It is not an official utility or emergency
+            service and does not replace official announcements from the electric company or local
+            government.
+          </p>
+        </section>
+        <section>
+          <h3 className="text-sm font-bold text-navy-900">2. Your account</h3>
+          <p className="mt-1">
+            Register with accurate information and keep your credentials secure. You are responsible
+            for all activity made through your account.
+          </p>
+        </section>
+        <section>
+          <h3 className="text-sm font-bold text-navy-900">3. Your reports</h3>
+          <p className="mt-1">
+            Only report incidents you have personally observed. Do not post false, misleading or
+            duplicated reports. Reports may include a location, photos and a description, and may be
+            verified, edited or removed by the utility company or moderators.
+          </p>
+        </section>
+        <section>
+          <h3 className="text-sm font-bold text-navy-900">4. Location and photos</h3>
+          <p className="mt-1">
+            Reports and alerts rely on the location you save or attach. By submitting a report you
+            consent to its location, photos and details being shown to other community users and to
+            the electric company for verification and response.
+          </p>
+        </section>
+        <section>
+          <h3 className="text-sm font-bold text-navy-900">5. Acceptable use</h3>
+          <p className="mt-1">
+            Do not use PowerGuide to harass others, post unlawful content or interfere with the
+            service. Accounts that abuse the platform may be suspended.
+          </p>
+        </section>
+        <section>
+          <h3 className="text-sm font-bold text-navy-900">6. Availability and safety</h3>
+          <p className="mt-1">
+            The service is provided &ldquo;as is&rdquo; without a guarantee of accuracy or uptime.
+            Never rely on it for life-safety decisions - keep away from downed lines and flooded
+            areas and follow official emergency guidance.
+          </p>
+        </section>
+        <section>
+          <h3 className="text-sm font-bold text-navy-900">7. Changes</h3>
+          <p className="mt-1">
+            These terms may be updated from time to time. Continuing to use PowerGuide after a change
+            means you accept the updated terms.
+          </p>
+        </section>
+      </div>
+    </Modal>
   );
 }
 
@@ -227,7 +336,7 @@ function RegisterAside() {
       <ul className="mt-8 space-y-5">
         {ASIDE_POINTS.map((point) => (
           <li key={point.title} className="flex gap-3">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-white text-primary-600 shadow-card">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-primary-500/15 text-primary-400">
               <point.icon className="h-5 w-5" aria-hidden="true" />
             </span>
             <div>

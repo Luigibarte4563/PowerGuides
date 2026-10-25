@@ -210,28 +210,28 @@ export default function NotificationComposeModal({ open, onClose, defaultRecipie
 
       {/* FR-NOT-5 - preview, rendered with the same markup the top-bar bell uses. */}
       <div>
-        <p className="mb-2 text-sm font-semibold text-navy-800">Preview</p>
-        <div className="rounded-card border border-navy-100 bg-canvas p-4">
+        <p className="mb-2 text-sm font-semibold text-navy-800 dark:text-navy-100">Preview</p>
+        <div className="rounded-card border border-navy-100 bg-canvas p-4 dark:border-navy-700 dark:bg-navy-800">
           <div className="flex items-start gap-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300">
               <Bell className="h-4 w-4" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
               <p className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wide text-navy-400">
+                <span className="text-xs font-bold uppercase tracking-wide text-navy-400 dark:text-navy-500">
                   {humanize(values.type, 'Maintenance')}
                 </span>
                 <Badge tone="info" size="sm">
                   Unread
                 </Badge>
               </p>
-              <p className="mt-1 text-sm font-semibold text-navy-900">
+              <p className="mt-1 text-sm font-semibold text-navy-900 dark:text-white">
                 {values.title.trim() || 'Your notification title'}
               </p>
-              <p className="mt-0.5 text-sm text-navy-600">
+              <p className="mt-0.5 text-sm text-navy-600 dark:text-navy-300">
                 {values.message.trim() || 'Your message will appear here exactly as residents see it.'}
               </p>
-              <p className="mt-1 text-xs text-navy-400">{formatRelativeTime(new Date().toISOString())}</p>
+              <p className="mt-1 text-xs text-navy-400 dark:text-navy-500">{formatRelativeTime(new Date().toISOString())}</p>
             </div>
           </div>
         </div>

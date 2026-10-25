@@ -1,21 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import clsx from 'clsx';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import RoleChangeGuard from '@/components/RoleChangeGuard';
 import { COMPANY_NAV, COMPANY_NAV_GROUPS, findCompanyNavItem } from '@/routes/companyNavItems';
-
-/** Sidebar width preference, namespaced so it survives a switch between the two apps. */
-const COLLAPSED_KEY = 'powerguide.company.sidebar.collapsed';
-
-function readCollapsed() {
-  try {
-    return window.localStorage.getItem(COLLAPSED_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Chrome for the Electric Company Dashboard.
@@ -23,30 +11,33 @@ function readCollapsed() {
  * Identical shell to `DashboardLayout` (the two apps share the sidebar, top bar and
  * card language) with the company navigation wired in. Access control is NOT here -
  * `RequireRole` wraps this route so the gate cannot be bypassed by a deep link.
+ *
+ * The map workspace pages render edge-to-edge; every other page keeps the standard
+ * padded `max-w-7xl` column. `/company/outages` has no map and `/company/map` was
+ * not converted, so both stay in the padded column.
  */
+const WORKSPACE_PATHS = new Set([
+  '/company/hazards',
+  '/company/maintenance',
+  '/company/power-stations',
+]);
+
 export default function CompanyLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(readCollapsed);
   const location = useLocation();
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  const toggleCollapsed = useCallback(() => {
-    setCollapsed((current) => {
-      const next = !current;
-      try {
-        window.localStorage.setItem(COLLAPSED_KEY, next ? '1' : '0');
-      } catch {
-        /* private mode: the rail just resets on reload */
-      }
-      return next;
-    });
-  }, []);
+  const isWorkspace = WORKSPACE_PATHS.has(location.pathname);
 
   return (
-    <div className="min-h-screen bg-canvas dark:bg-navy-950">
+    <div
+      data-theme="dark"
+      data-surface="dark"
+      className="flex h-screen overflow-hidden bg-[#03041A] font-montserrat text-white"
+    >
       <a href="#company-content" className="skip-link">
         Skip to main content
       </a>
@@ -54,16 +45,15 @@ export default function CompanyLayout() {
       <Sidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        collapsed={collapsed}
-        onToggleCollapsed={toggleCollapsed}
         items={COMPANY_NAV}
         groups={COMPANY_NAV_GROUPS}
         homeTo="/company"
         notificationsTo="/company/notifications"
+        profileTo="/company/profile"
         ariaLabel="Electric Company Dashboard navigation"
       />
 
-      <div className={clsx('transition-[padding] duration-200', collapsed ? 'lg:pl-[4.75rem]' : 'lg:pl-[17.5rem]')}>
+      <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
           onOpenSidebar={() => setSidebarOpen(true)}
           findItem={findCompanyNavItem}
@@ -76,13 +66,20 @@ export default function CompanyLayout() {
           // location, so the link is kept for the case where one has not been set yet.
           showLocationLink
         />
-        <main id="company-content" className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="mx-auto w-full max-w-7xl">
-            {/* FR-AUTH-4b - offers a re-login when the API refuses a call this role
-                used to be allowed to make. */}
-            <RoleChangeGuard />
+        <main
+          id="company-content"
+          className="min-w-0 flex-1 overflow-y-auto overscroll-contain bg-[#03041A]"
+        >
+          {/* FR-AUTH-4b - offers a re-login when the API refuses a call this role
+              used to be allowed to make. */}
+          <RoleChangeGuard />
+          {isWorkspace ? (
             <Outlet />
-          </div>
+          ) : (
+            <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+              <Outlet />
+            </div>
+          )}
         </main>
       </div>
     </div>

@@ -1,18 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ZoomControl } from 'react-leaflet';
 import { CalendarClock, CheckCircle2, Pencil, Plus, Trash2, Wrench } from 'lucide-react';
-import PageHeader from '@/components/layout/PageHeader';
-import Tabs from '@/components/ui/Tabs';
 import Badge from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Card, CardBody } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
-import { TBody, TD, TH, THead, TR, Table } from '@/components/ui/Table';
 import DataView from '@/components/DataView';
 import RecordCard from '@/components/RecordCard';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import AppMap, { FitPoints, MapCircle, MapLegend, MapPoints, PIN_COLORS } from '@/components/Map';
-import MapWorkspace from '@/components/MapWorkspace';
+import MapWorkspace, { FeedActions, FeedToggle } from '@/components/MapWorkspace';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { maintenanceApi, UPCOMING_STATUSES } from '@/api';
@@ -22,12 +19,6 @@ import { formatDate, formatDistance, formatTime, humanize } from '@/utils/format
 import { toUserMessage } from '@/utils/errorMessage';
 import Pagination from '@/components/Pagination';
 import MaintenanceFormModal from './components/MaintenanceFormModal';
-
-const TABS = [
-  { value: 'upcoming', label: 'Upcoming', icon: CalendarClock },
-  { value: 'ongoing', label: 'Ongoing', icon: Wrench },
-  { value: 'completed', label: 'Completed', icon: CheckCircle2 },
-];
 
 /**
  * Module MNT - maintenance management.
@@ -167,17 +158,11 @@ export default function Maintenance() {
     </div>
   );
 
-  const maintenanceMap =
-    mapPoints.length === 0 ? (
-      <p className="h-full overflow-y-auto p-8 text-center text-sm text-navy-500">
-        {mapQuery.isLoading
-          ? 'Loading maintenance areas…'
-          : 'No maintenance area in the API response carries coordinates yet.'}
-      </p>
-    ) : (
-      <AppMap zoom={12} className="h-full w-full">
-        {/* Grown by the radius so a whole coverage circle sits inside the fitted view. */}
-        <FitPoints items={mapPoints} radiusFor={(point) => point.radius} />
+  const maintenanceMap = (
+    <AppMap zoom={12} zoomControl={false} className="h-full w-full">
+      <ZoomControl position="bottomright" />
+      {/* Grown by the radius so a whole coverage circle sits inside the fitted view. */}
+      <FitPoints items={mapPoints} radiusFor={(point) => point.radius} />
 
         {circlePoints.map((point) => (
           <MapCircle
@@ -237,211 +222,152 @@ export default function Maintenance() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Maintenance"
-        description="Plan outage windows, publish them to residents and track what is finished."
+    <div
+      data-theme="dark"
+      className="min-h-full bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
+      <FeedActions
         actions={
           isManager ? (
-            <Button variant="primary" icon={Plus} onClick={openCreate}>
+            <Button
+              variant="primary"
+              icon={Plus}
+              onClick={openCreate}
+              className="rounded-xl px-5 shadow-[0_8px_24px_rgba(255,187,2,0.18)]"
+            >
               Schedule maintenance
             </Button>
           ) : null
         }
       />
 
-      {isManager ? null : (
-        <Card>
-          <CardBody>
-            <p className="text-sm text-navy-600">
-              You can review published schedules, but planning them is limited to electric company
-              and admin accounts.
-            </p>
-          </CardBody>
-        </Card>
-      )}
-
-      <Tabs
-        tabs={TABS.map((item) => ({
-          ...item,
-          count:
-            item.value === 'upcoming'
-              ? upcomingQuery.data ?? counts.upcoming
-              : item.value === 'ongoing'
-                ? counts.ongoing
-                : counts.completed,
-        }))}
-        value={tab}
-        onChange={(value) => {
-          setTab(value);
-          setPage(1);
-        }}
-        ariaLabel="Maintenance status"
-      />
-
       <MapWorkspace
         map={maintenanceMap}
-        mapTitle="Maintenance areas"
-        mapDescription={
-          mapPoints.length
-            ? `${mapPoints.length} affected area${mapPoints.length === 1 ? '' : 's'} plotted.`
-            : 'No plotted areas.'
-        }
-        mapAction={
-          <Select
-            aria-label="Filter map by status"
+        mapLabel="Maintenance areas map"
+        mapTitle="Maintenance Feed"
+        mapSubtitle={`${mapPoints.length} affected area${mapPoints.length === 1 ? '' : 's'} plotted${
+          mapQuery.dataUpdatedAt ? ` · updated ${formatTime(mapQuery.dataUpdatedAt)}` : ''
+        }`}
+        toggle={
+          <FeedToggle
+            ariaLabel="Maintenance status"
+            value={tab}
+            onChange={(value) => {
+              setTab(value);
+              setPage(1);
+            }}
             options={[
-              { value: 'upcoming', label: 'Upcoming' },
-              { value: 'ongoing', label: 'Ongoing' },
-              { value: 'completed', label: 'Completed' },
+              { value: 'upcoming', label: 'Upcoming', count: upcomingQuery.data ?? counts.upcoming },
+              { value: 'ongoing', label: 'Ongoing', count: counts.ongoing },
+              { value: 'completed', label: 'Completed', count: counts.completed },
             ]}
-            placeholder="All statuses"
-            value={mapStatus}
-            onChange={(event) => setMapStatus(event.target.value)}
-            className="h-9 py-0 text-xs"
           />
         }
-      >
-        <DataView
-          isLoading={tab === 'completed' ? completeQuery.isLoading : listQuery.isLoading}
-          error={tab === 'completed' ? completeQuery.isError : listQuery.isError}
-          onRetry={() =>
-            tab === 'completed' ? completeQuery.refetch() : listQuery.refetch()
-          }
-          loadingLabel="Loading maintenance schedules…"
-          items={pageRows}
-          empty={{
-            icon: Wrench,
-            title: emptyTitle(tab),
-            description: emptyDescription(tab),
-            action: isManager ? (
-              <Button variant="primary" icon={Plus} onClick={openCreate}>
-                Schedule maintenance
-              </Button>
-            ) : null,
-          }}
-          renderCard={(item) => (
-            <RecordCard
-              icon={Wrench}
-              iconTone={item.status === 'ongoing' ? 'warning' : 'primary'}
-              title={item.title}
-              subtitle={[item.barangay, formatDate(item.date)].filter(Boolean).join(' · ')}
-              badges={[
-                { label: humanize(item.status), tone: statusTone(item.status) },
-                item.radius ? { label: formatDistance(item.radius), tone: 'neutral' } : null,
+        stats={[
+          { label: 'Upcoming', value: counts.upcoming, icon: CalendarClock, color: '#22D3EE' },
+          { label: 'Ongoing', value: counts.ongoing, icon: Wrench, color: '#FFBB02' },
+          { label: 'Completed', value: counts.completed, icon: CheckCircle2, color: '#34FB34' },
+        ]}
+        filters={
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
+            <Select
+              aria-label="Filter map by status"
+              options={[
+                { value: 'upcoming', label: 'Upcoming' },
+                { value: 'ongoing', label: 'Ongoing' },
+                { value: 'completed', label: 'Completed' },
               ]}
-              description={item.description}
-              meta={[
-                { label: 'Window', value: `${formatTime(item.startAt)} – ${formatTime(item.endAt)}` },
-                item.company ? { label: 'Posted by', value: item.company } : null,
-              ].filter(Boolean)}
-              actions={
-                isManager ? (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      icon={Pencil}
-                      onClick={() => {
-                        setEditing(item);
-                        setFormOpen(true);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      icon={Trash2}
-                      className="text-danger-600"
-                      onClick={() => setDeleting(item)}
-                    >
-                      Delete
-                    </Button>
-                  </>
-                ) : null
-              }
+              placeholder="All statuses"
+              value={mapStatus}
+              onChange={(event) => setMapStatus(event.target.value)}
+              className="h-9 py-0 text-xs"
             />
-          )}
-          renderTable={(visible) => (
-            <div className="rounded-card border border-navy-100 bg-white shadow-card">
-              <Table>
-                <THead>
-                  <tr>
-                    <TH>Description</TH>
-                    <TH>Barangays</TH>
-                    <TH>Date</TH>
-                    <TH>Window</TH>
-                    <TH>Radius</TH>
-                    <TH>Status</TH>
-                    {isManager ? <TH align="right">Actions</TH> : null}
-                  </tr>
-                </THead>
-                <TBody>
-                  {visible.map((item) => (
-                    <TR key={item.id}>
-                      <TD>
-                        <span className="font-semibold text-navy-900">{item.title}</span>
-                        {item.description ? (
-                          <p className="mt-0.5 max-w-xs truncate text-xs text-navy-500">
-                            {item.description}
-                          </p>
-                        ) : null}
-                      </TD>
-                      <TD className="max-w-xs text-sm">{item.barangay || '—'}</TD>
-                      <TD className="whitespace-nowrap text-sm">{formatDate(item.date)}</TD>
-                      <TD className="whitespace-nowrap text-xs text-navy-500">
-                        {formatTime(item.startAt)} – {formatTime(item.endAt)}
-                      </TD>
-                      <TD className="text-sm">
-                        {item.radius ? formatDistance(item.radius) : '—'}
-                      </TD>
-                      <TD>
-                        <Badge tone={statusTone(item.status)}>{humanize(item.status)}</Badge>
-                      </TD>
-                      {isManager ? (
-                        <TD align="right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              icon={Pencil}
-                              onClick={() => {
-                                setEditing(item);
-                                setFormOpen(true);
-                              }}
-                              aria-label={`Edit schedule ${item.id}`}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              icon={Trash2}
-                              className="text-danger-600"
-                              onClick={() => setDeleting(item)}
-                              aria-label={`Delete schedule ${item.id}`}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </TD>
-                      ) : null}
-                    </TR>
-                  ))}
-                </TBody>
-              </Table>
-              <Pagination
-                page={page}
-                pageCount={pageCount}
-                total={rows.length}
-                pageSize={COMPANY_PAGE_SIZE}
-                onChange={setPage}
+          </div>
+        }
+        plottedCount={mapPoints.length}
+        mapEmpty={!mapQuery.isLoading && mapPoints.length === 0}
+        mapEmptyLabel="No mapped maintenance areas yet"
+      >
+        <div className="space-y-3">
+          <DataView
+            isLoading={tab === 'completed' ? completeQuery.isLoading : listQuery.isLoading}
+            error={tab === 'completed' ? completeQuery.isError : listQuery.isError}
+            onRetry={() =>
+              tab === 'completed' ? completeQuery.refetch() : listQuery.refetch()
+            }
+            loadingLabel="Loading maintenance schedules…"
+            items={pageRows}
+            empty={{
+              icon: Wrench,
+              title: emptyTitle(tab),
+              description: emptyDescription(tab),
+              action: isManager ? (
+                <Button variant="primary" icon={Plus} onClick={openCreate}>
+                  Schedule maintenance
+                </Button>
+              ) : null,
+            }}
+            renderCard={(item) => (
+              <RecordCard
+                icon={Wrench}
+                iconTone={item.status === 'ongoing' ? 'warning' : 'primary'}
+                title={item.title}
+                subtitle={[item.barangay, formatDate(item.date)].filter(Boolean).join(' · ')}
+                badges={[
+                  { label: humanize(item.status), tone: statusTone(item.status) },
+                  item.radius ? { label: formatDistance(item.radius), tone: 'neutral' } : null,
+                ]}
+                description={item.description}
+                meta={[
+                  { label: 'Window', value: `${formatTime(item.startAt)} – ${formatTime(item.endAt)}` },
+                  item.company ? { label: 'Posted by', value: item.company } : null,
+                ].filter(Boolean)}
+                actions={
+                  isManager ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        icon={Pencil}
+                        onClick={() => {
+                          setEditing(item);
+                          setFormOpen(true);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        icon={Trash2}
+                        className="text-danger-600"
+                        onClick={() => setDeleting(item)}
+                      >
+                        Delete
+                      </Button>
+                    </>
+                  ) : null
+                }
               />
-            </div>
-          )}
-        />
+            )}
+          />
+
+          <Pagination
+            page={page}
+            pageCount={pageCount}
+            total={rows.length}
+            pageSize={COMPANY_PAGE_SIZE}
+            onChange={setPage}
+          />
+        </div>
       </MapWorkspace>
+
+      {!isManager ? (
+        <p className="mt-4 text-[10px] text-white/40">
+          You can review published schedules, but planning them is limited to electric company and admin
+          accounts.
+        </p>
+      ) : null}
 
       <MaintenanceFormModal
         open={formOpen}

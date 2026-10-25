@@ -571,9 +571,9 @@ function HistoryModal({ device, onClose }) {
                 <Line
                   type="monotone"
                   dataKey="percentage"
-                  stroke="#F59E0B"
+                  stroke="#FFBB02"
                   strokeWidth={2.5}
-                  dot={{ r: 3, fill: '#F59E0B' }}
+                  dot={{ r: 3, fill: '#FFBB02' }}
                   activeDot={{ r: 5 }}
                 />
               </LineChart>

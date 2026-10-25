@@ -1,546 +1,656 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CalendarClock, Eye, Pencil, Plus, Trash2, Zap } from 'lucide-react';
-import PageHeader from '@/components/layout/PageHeader';
-import Tabs from '@/components/ui/Tabs';
-import Badge from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { TBody, TD, TH, THead, TR, Table } from '@/components/ui/Table';
-import DataView from '@/components/DataView';
-import RecordCard from '@/components/RecordCard';
-import ConfirmDialog from '@/components/ConfirmDialog';
-import AppMap, {
-  FitPoints,
-  MapLegend,
-  MapPin as MapPinMarker,
-  MapPoints,
-  RadiusCircle,
-} from '@/components/Map';
-import MapWorkspace from '@/components/MapWorkspace';
-import { useReference } from '@/context/ReferenceContext';
-import { useToast } from '@/context/ToastContext';
-import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useSavedLocation } from '@/hooks/useSavedLocation';
+import { CircleMarker, Popup, ZoomControl } from 'react-leaflet';
+import {
+  Activity,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Home,
+  Loader2,
+  MapPin,
+  Pencil,  Plus,
+  Search,
+  Trash2,
+  X,
+  Zap,
+} from 'lucide-react';
+import AppMap from '@/components/Map';
 import { outagesApi } from '@/api';
 import { QUERY_KEYS } from '@/utils/constants';
-import { isOwnedBy, readOutage, withDistance } from '@/utils/records';
-import {
-  DEFAULT_RADIUS_METERS,
-  RADIUS_OPTIONS,
-  severityTone,
-  statusTone,
-} from '@/utils/constants';
-import { formatDateTime, formatDistance, formatRelativeTime, humanize } from '@/utils/formatters';
+import { formatRelativeTime, formatTime, hasCoordinates } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
+import { isOwnedBy, readOutage } from '@/utils/records';
+import {
+  filterByStatus,
+  formatCategory,
+  formatLabel,
+  mergeReports,
+  pageCount,
+  pageSlice,
+  searchReports,
+  severityKey,
+  severityStyle,
+  sortByAlertLevel,
+} from '@/utils/outageFeed';
 import OutageFormModal from './components/OutageFormModal';
+import ReportFeedbackDialog from './components/ReportFeedbackDialog';
+
+const PAGE_SIZE = 3;
+const MAP_CENTER = { lat: 16.04, lng: 120.33 };
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'resolved', label: 'Resolved' },
+  { value: 'all', label: 'All' },
+];
+
+const SURFACE_INPUT =
+  'h-11 rounded-xl border border-white/10 bg-[#1C1D30]/60 text-sm text-white placeholder:text-white/30 focus:border-[#FFBB02] focus:outline-none focus:ring-2 focus:ring-[#FFBB02]/25';
+
+function statusClasses(status) {
+  const key = String(status ?? '').toLowerCase();
+  if (/resolv|clos|complet|clear/.test(key)) {
+    return 'border-[#34FB34]/20 bg-[#34FB34]/10 text-[#34FB34]';
+  }
+  if (/reject|cancel|dismiss/.test(key)) {
+    return 'border-[#FF2E1F]/20 bg-[#FF2E1F]/10 text-[#FF2E1F]';
+  }
+  if (/progress|review|verif|investigat|pending/.test(key)) {
+    return 'border-[#FFBB02]/20 bg-[#FFBB02]/10 text-[#FFBB02]';
+  }
+  if (/active|open|reported/.test(key)) {
+    return 'border-[#22D3EE]/20 bg-[#22D3EE]/10 text-[#22D3EE]';
+  }
+  return 'border-[#9CA3AF]/20 bg-[#9CA3AF]/10 text-[#9CA3AF]';
+}
 
 /**
- * Module B - outage reports.
+ * Interactive outage map and live feed.
  *
- * `get_active.php` / `get_resolve.php` only return COUNTS, so the Active and Resolved
- * tabs filter `get.php` by `status` instead. `get.php` rows carry no user id, so
- * ownership is resolved by intersecting the ids with `get_my_report.php` - and
- * `get_detail.php` returns 403 for reports you do not own, so the detail link is only
- * offered on your own reports.
- *
- * The map view plots the same rows the list view shows (`get.php` returns
- * `latitude`/`longitude`), so no dedicated geo endpoint is needed; distance from
- * the saved location is computed client-side with `withDistance`.
+ * `get.php` only exposes active public reports, while `get_my_report.php` exposes
+ * the resident's own reports (including resolved ones). Both are fetched every
+ * ten seconds and deduplicated by id, with the owned copy winning so the Edit and
+ * Delete actions stay attached to the row the resident can change.
  */
-const TABS = [
-  { value: 'all', label: 'All', icon: Zap },
-  { value: 'active', label: 'Active', icon: Zap },
-  { value: 'resolved', label: 'Resolved', icon: CalendarClock },
-  { value: 'mine', label: 'My Reports', icon: Eye },
-];
-
-const SEVERITY_LEGEND = [
-  { label: 'Critical / high', tone: 'danger' },
-  { label: 'Moderate', tone: 'warning' },
-  { label: 'Low / minor', tone: 'success' },
-  { label: 'Not rated', tone: 'neutral' },
-];
-
 export default function Outages() {
-  const { outageCategories, statuses } = useReference();
-  const { coords, hasLocation } = useSavedLocation();
   const queryClient = useQueryClient();
-  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const [tab, setTab] = useState(searchParams.get('tab') || 'all');
+  const initialTab = searchParams.get('tab');
+  const [scope, setScope] = useState(initialTab === 'mine' ? 'mine' : 'all');
+  const [status, setStatus] = useState(
+    initialTab === 'resolved' ? 'resolved' : initialTab === 'mine' ? 'all' : 'active'
+  );
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [radius, setRadius] = useState(DEFAULT_RADIUS_METERS);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [deleting, setDeleting] = useState(null);
-  const debouncedSearch = useDebouncedValue(search);
+  const [page, setPage] = useState(1);
+  const [editor, setEditor] = useState(null);
+  const [confirming, setConfirming] = useState(null);
+  const [feedback, setFeedback] = useState(null);
 
-  // Quick actions from the overview open the create modal (?new=1).
-  useEffect(() => {
-    if (searchParams.get('new') === '1') {
-      setFormOpen(true);
-      const next = new URLSearchParams(searchParams);
-      next.delete('new');
-      setSearchParams(next, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
-
-  const filters = useMemo(
-    () => ({
-      status: tab === 'active' ? 'active' : tab === 'resolved' ? 'resolved' : statusFilter || undefined,
-      category: categoryFilter || undefined,
-    }),
-    [tab, statusFilter, categoryFilter]
-  );
-
-  const listQuery = useQuery({
-    queryKey: QUERY_KEYS.outages({ tab, ...filters }),
+  const feedQuery = useQuery({
+    queryKey: QUERY_KEYS.outages({ scope: 'interactive-map' }),
     queryFn: async ({ signal }) => {
-      if (tab === 'mine') return (await outagesApi.getMyReports({}, { signal })).items;
-      return (await outagesApi.list(filters, { signal })).items;
-    },
-    retry: 1,
-  });
-
-  // Ownership set (rows from get.php have no user_id).
-  const myReportsQuery = useQuery({
-    queryKey: QUERY_KEYS.outages({ scope: 'mine-ids' }),
-    queryFn: async ({ signal }) => {
-      const { items } = await outagesApi.getMyReports({}, { signal });
-      return items.map((item) => readOutage(item).id);
-    },
-    staleTime: 60 * 1000,
-    retry: 1,
-  });
-  const myIds = myReportsQuery.data || [];
-
-  const items = useMemo(() => {
-    const term = debouncedSearch.trim().toLowerCase();
-    return (listQuery.data || [])
-      .map(readOutage)
-      .filter((outage) => {
-        if (!term) return true;
-        return [outage.locationName, outage.barangay, outage.description, outage.category]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(term));
-      });
-  }, [listQuery.data, debouncedSearch]);
-
-  // Rows the map can plot, with a client-side distance when a location is saved.
-  const mapped = useMemo(
-    () =>
-      items
-        .filter((outage) => Number.isFinite(outage.lat) && Number.isFinite(outage.lng))
-        .map((outage) => withDistance(outage, coords)),
-    [items, coords]
-  );
-
-  const plotted = useMemo(() => {
-    if (!hasLocation) return mapped;
-    return mapped.filter(
-      (outage) => !Number.isFinite(outage.distance) || outage.distance <= Number(radius)
-    );
-  }, [mapped, hasLocation, radius]);
-
-  const unlocatedCount = items.length - mapped.length;
-
-  const mapSummary =
-    mapped.length === 0
-      ? 'None of the reports matching your filters carry coordinates yet.'
-      : `${plotted.length} of ${mapped.length} located report${mapped.length === 1 ? '' : 's'} plotted${
-          hasLocation ? ` within ${formatDistance(radius)} of you` : ''
-        }.`;
-
-  const outageMap =
-    mapped.length === 0 ? (
-      <p className="h-full overflow-y-auto p-8 text-center text-sm text-navy-500">
-        {listQuery.isLoading
-          ? 'Loading outage reports…'
-          : 'No outage reports with coordinates match your filters. Reports appear here once they are pinned to a location.'}
-      </p>
-    ) : (
-      <AppMap zoom={13} className="h-full w-full">
-        {/* No explicit centre: <FitPoints> owns the viewport so the map frames the
-            plotted reports rather than just the saved point. */}
-        <FitPoints items={plotted.length ? plotted : mapped} />
-        {hasLocation ? <RadiusCircle center={coords} radius={radius} /> : null}
-        <MapPoints
-          items={plotted}
-          toneFor={(outage) => (outage.severity ? severityTone(outage.severity) : 'neutral')}
-        >
-          {(outage) => {
-            const owned = isOwnedBy(outage, null, { myIds });
-            return (
-              <div className="min-w-[13rem]">
-                <p className="font-bold text-navy-900">
-                  {outage.locationName || outage.barangay || 'Outage report'}
-                </p>
-                {outage.reportKey ? (
-                  <p className="mt-0.5 text-xs text-navy-400">{outage.reportKey}</p>
-                ) : null}
-                <p className="mt-1 text-xs text-navy-600">{outage.description}</p>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {outage.severity ? (
-                    <Badge tone={severityTone(outage.severity)} size="sm">
-                      {humanize(outage.severity)}
-                    </Badge>
-                  ) : null}
-                  {outage.status ? (
-                    <Badge tone={statusTone(outage.status)} size="sm">
-                      {humanize(outage.status)}
-                    </Badge>
-                  ) : null}
-                  {Number.isFinite(outage.distance) ? (
-                    <Badge tone="neutral" size="sm">
-                      {formatDistance(outage.distance)} away
-                    </Badge>
-                  ) : null}
-                </div>
-                {owned ? (
-                  <Link
-                    to={`/dashboard/outages/${outage.id}`}
-                    className="mt-2 inline-block text-xs font-semibold text-primary-700 hover:text-primary-800"
-                  >
-                    View report →
-                  </Link>
-                ) : null}
-              </div>
-            );
-          }}
-        </MapPoints>
-        {hasLocation ? (
-          <MapPinMarker position={coords} tone="success" size={32}>
-            <p className="text-xs font-semibold text-navy-700">Your saved location</p>
-          </MapPinMarker>
-        ) : null}
-        <MapLegend
-          title="Severity"
-          items={[
-            ...SEVERITY_LEGEND,
-            ...(hasLocation ? [{ label: 'Your location', tone: 'success' }] : []),
-          ]}
-        />
-      </AppMap>
-    );
-
-  const counts = useQuery({
-    queryKey: QUERY_KEYS.outages({ scope: 'counts' }),
-    queryFn: async ({ signal }) => {
-      const [active, resolved] = await Promise.all([
-        outagesApi.getActive({}, { signal }),
-        outagesApi.getResolved({}, { signal }),
+      const [publicResult, mineResult] = await Promise.all([
+        outagesApi.list({}, { signal }),
+        outagesApi.getMyReports({}, { signal }),
       ]);
-      return { active: active.count, resolved: resolved.count };
+      const publicReports = publicResult.items.map(readOutage);
+      const mineReports = mineResult.items.map(readOutage);
+      return {
+        reports: mergeReports(publicReports, mineReports),
+        mineIds: mineReports.map((report) => report.id).filter((id) => id !== null && id !== undefined),
+      };
     },
-    staleTime: 60 * 1000,
+    refetchInterval: 10000,
+    staleTime: 5000,
     retry: 1,
   });
+
+  const reports = useMemo(() => feedQuery.data?.reports || [], [feedQuery.data]);
+  const myIds = useMemo(() => feedQuery.data?.mineIds || [], [feedQuery.data]);
+
+  const scopedReports = useMemo(
+    () => (scope === 'mine' ? reports.filter((report) => isOwnedBy(report, null, { myIds })) : reports),
+    [reports, scope, myIds]
+  );
+
+  const activeScopeReports = useMemo(() => filterByStatus(scopedReports, 'active'), [scopedReports]);
+  const filteredReports = useMemo(
+    () => sortByAlertLevel(searchReports(filterByStatus(scopedReports, status), search)),
+    [scopedReports, status, search]
+  );
+  const mappableReports = useMemo(
+    () => filteredReports.filter((report) => hasCoordinates(report.lat, report.lng)),
+    [filteredReports]
+  );
+
+  const totalPages = pageCount(filteredReports.length, PAGE_SIZE);
+  const currentPage = Math.min(page, totalPages);
+  const pagedReports = pageSlice(filteredReports, currentPage, PAGE_SIZE);
+
+  const stats = useMemo(() => {
+    const affectedHomes = activeScopeReports.reduce((total, report) => {
+      const affected = Number(report.affectedHouses);
+      return total + (Number.isFinite(affected) ? affected : 0);
+    }, 0);
+    return {
+      active: activeScopeReports.length,
+      critical: activeScopeReports.filter((report) => severityKey(report.severity) === 'critical').length,
+      affectedHomes,
+    };
+  }, [activeScopeReports]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  // Quick action from the overview: /dashboard/outages?new=1 opens the form.
+  useEffect(() => {
+    if (searchParams.get('new') !== '1') return;
+    setEditor({ outage: null });
+    const next = new URLSearchParams(searchParams);
+    next.delete('new');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const deleteMutation = useMutation({
     mutationFn: (id) => outagesApi.remove(id),
-    onSuccess: () => {
-      toast.success('Your report was cancelled.', { title: 'Cancelled' });
-      queryClient.invalidateQueries({ queryKey: ['outages'] });
-      setDeleting(null);
-    },
   });
 
-  const openCreate = () => {
-    setEditing(null);
-    setFormOpen(true);
+  const switchScope = (nextScope) => {
+    if (nextScope === scope) return;
+    setScope(nextScope);
+    setStatus(nextScope === 'mine' ? 'all' : 'active');
+    setSearch('');
+    setPage(1);
   };
 
-  const openEdit = (outage) => {
-    setEditing(outage);
-    setFormOpen(true);
+  const changeStatus = (nextStatus) => {
+    setStatus(nextStatus);
+    setPage(1);
   };
+
+  const openCreate = () => setEditor({ outage: null });
+  const openEdit = (outage) => setEditor({ outage });
+
+  const handleDelete = async () => {
+    if (!confirming) return;
+    try {
+      await deleteMutation.mutateAsync(confirming.id);
+      queryClient.invalidateQueries({ queryKey: ['outages'] });
+      setConfirming(null);
+      setFeedback({
+        type: 'success',
+        title: 'Report deleted',
+        message: 'The outage report was removed from the community feed.',
+      });
+    } catch (error) {
+      setConfirming(null);
+      setFeedback({
+        type: 'error',
+        title: 'Could not delete the report',
+        message: toUserMessage(error, 'Please try again in a moment.'),
+      });
+    }
+  };
+
+  const emptyTitle = search.trim()
+    ? `No reports match “${search.trim()}”`
+    : scope === 'mine'
+      ? status === 'active'
+        ? 'You have no active reports'
+        : status === 'resolved'
+          ? 'You have no resolved reports'
+          : 'You have not reported an outage yet'
+      : status === 'resolved'
+        ? 'No resolved reports available'
+        : status === 'all'
+          ? 'No outage reports yet'
+          : 'No active outages right now';
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Outage Reports"
-        description="Report power outages and follow them until they are resolved."
-        actions={
-          <Button variant="primary" icon={Plus} onClick={openCreate}>
-            Report Outage
-          </Button>
-        }
-      />
+    <div
+      data-theme="dark"
+      className="min-h-full bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={openCreate}
+          className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#FFBB02] px-5 text-sm font-extrabold text-[#191400] shadow-[0_8px_24px_rgba(255,187,2,0.18)] transition hover:bg-[#FFD400]"
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Report Outage
+        </button>
+        <div className="relative w-full sm:w-[260px] xl:w-[280px]">
+          <Search
+            className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35"
+            aria-hidden="true"
+          />
+          <label htmlFor="outage-search" className="sr-only">
+            Search outage reports
+          </label>
+          <input
+            id="outage-search"
+            type="search"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="Search location, description, category…"
+            className={`${SURFACE_INPUT} w-full pl-10 pr-10 [&::-webkit-search-cancel-button]:appearance-none`}
+          />
+          {search ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setPage(1);
+              }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-white/40 transition:hover:bg-white/10:hover:text-white"
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
+      </div>
 
-      <Tabs
-        tabs={TABS.map((item) => {
-          if (item.value === 'active') return { ...item, count: counts.data?.active };
-          if (item.value === 'resolved') return { ...item, count: counts.data?.resolved };
-          if (item.value === 'mine') return { ...item, count: myIds.length };
-          return item;
-        })}
-        value={tab}
-        onChange={setTab}
-        ariaLabel="Outage report filters"
-      />
-
-      <MapWorkspace
-        map={outageMap}
-        mapTitle="Outage map"
-        mapDescription={mapSummary}
-        mapFooter={
-          hasLocation ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-navy-600">Radius</span>
-              {RADIUS_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setRadius(option.value)}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
-                    radius === option.value
-                      ? 'border-primary-400 bg-primary-100 text-primary-800'
-                      : 'border-navy-200 bg-white text-navy-600 hover:bg-navy-50'
-                  }`}
+      <div className="mt-5 flex flex-col gap-6 xl:flex-row xl:items-stretch">
+        <section
+          className="relative h-[440px] min-w-0 overflow-hidden rounded-2xl border border-white/5 bg-[#31324C]/20 shadow-[0_20px_50px_rgba(0,0,0,0.25)] lg:h-[550px] xl:flex-1"
+          aria-label="Outage map"
+        >
+          <AppMap
+            center={MAP_CENTER}
+            zoom={12}
+            zoomControl={false}
+            className="pg-dark-map h-full w-full"
+          >
+            <ZoomControl position="bottomright" />
+            {mappableReports.map((outage) => {
+              const style = severityStyle(outage.severity);
+              return (
+                <CircleMarker
+                  key={outage.id}
+                  center={[Number(outage.lat), Number(outage.lng)]}
+                  radius={9}
+                  pathOptions={{
+                    color: style.color,
+                    fillColor: style.color,
+                    fillOpacity: 0.88,
+                    opacity: 1,
+                    weight: 2,
+                  }}
                 >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          ) : unlocatedCount > 0 ? (
-            <p className="text-xs text-navy-500">
-              {unlocatedCount} report{unlocatedCount === 1 ? '' : 's'} in this list{' '}
-              {unlocatedCount === 1 ? 'has' : 'have'} no coordinates, so{' '}
-              {unlocatedCount === 1 ? 'it is' : 'they are'} listed but not plotted.
-            </p>
-          ) : null
-        }
-      >
-        <Card className="card-hover">
-          <CardBody className="grid gap-3 sm:grid-cols-2">
-            <Input
-              label="Search"
-              placeholder="Search locations and descriptions"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-            <Select
-              label="Status"
-              placeholder="All statuses"
-              options={statuses}
-              value={tab === 'all' || tab === 'mine' ? statusFilter : ''}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              disabled={tab === 'active' || tab === 'resolved'}
-              hint={tab === 'active' || tab === 'resolved' ? 'Fixed by the selected tab.' : undefined}
-            />
-            <Select
-              label="Category"
-              placeholder="All categories"
-              options={outageCategories}
-              value={categoryFilter}
-              onChange={(event) => setCategoryFilter(event.target.value)}
-            />
-            <div className="flex items-end">
-              <Button
-                variant="outline"
-                fullWidth
-                onClick={() => {
-                  setSearch('');
-                  setStatusFilter('');
-                  setCategoryFilter('');
-                }}
-              >
-                Clear filters
-              </Button>
-            </div>
-          </CardBody>
-        </Card>
-
-        <DataView
-        isLoading={listQuery.isLoading}
-        error={listQuery.isError}
-        errorMessage={toUserMessage(listQuery.error)}
-        onRetry={() => listQuery.refetch()}
-        loadingLabel="Loading outage reports…"
-        items={items}
-        empty={{
-          icon: Zap,
-          title:
-            tab === 'mine'
-              ? 'You have not reported any outages yet'
-              : tab === 'active'
-                ? 'No active outages right now'
-                : tab === 'resolved'
-                  ? 'No resolved outages yet'
-                  : 'No outage reports yet',
-          description:
-            tab === 'mine'
-              ? 'When you report an outage it appears here so you can track it to resolution.'
-              : 'Be the first to report what is happening in your area.',
-          action: (
-            <Button variant="primary" icon={Plus} onClick={openCreate}>
-              Report an outage
-            </Button>
-          ),
-        }}
-        renderCard={(outage) => {
-          const owned = isOwnedBy(outage, null, { myIds });
-          return (
-            <RecordCard
-              to={owned ? `/dashboard/outages/${outage.id}` : undefined}
-              icon={Zap}
-              iconTone={outage.severity ? severityTone(outage.severity) : 'primary'}
-              title={outage.locationName || outage.barangay || 'Outage report'}
-              subtitle={`${humanize(outage.category, 'Uncategorised')} · reported ${formatRelativeTime(outage.createdAt)}`}
-              badges={[
-                outage.severity ? { label: humanize(outage.severity), tone: severityTone(outage.severity) } : null,
-                outage.status ? { label: humanize(outage.status), tone: statusTone(outage.status) } : null,
-                owned ? { label: 'My report', tone: 'primary' } : null,
-              ]}
-              description={outage.description}
-              meta={[
-                { label: 'Reported', value: formatDateTime(outage.createdAt), icon: CalendarClock },
-                outage.barangay ? { label: 'Barangay', value: outage.barangay } : null,
-              ].filter(Boolean)}
-              actions={
-                owned ? (
-                  <>
-                    <Button size="sm" variant="outline" icon={Pencil} onClick={() => openEdit(outage)}>
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      icon={Trash2}
-                      className="text-danger-600"
-                      onClick={() => setDeleting(outage)}
-                    >
-                      Cancel
-                    </Button>
-                  </>
-                ) : null
-              }
-            />
-          );
-        }}
-        renderTable={(rows) => (
-          <div className="rounded-card border border-navy-100 bg-white shadow-card">
-            <Table>
-              <THead>
-                <tr>
-                  <TH>Location</TH>
-                  <TH>Category</TH>
-                  <TH>Severity</TH>
-                  <TH>Status</TH>
-                  <TH>Reported</TH>
-                  <TH align="right">Actions</TH>
-                </tr>
-              </THead>
-              <TBody>
-                {rows.map((outage) => {
-                  const owned = isOwnedBy(outage, null, { myIds });
-                  return (
-                    <TR key={outage.id}>
-                      <TD>
-                        {owned ? (
-                          <Link
-                            to={`/dashboard/outages/${outage.id}`}
-                            className="rounded font-semibold text-navy-900 hover:text-primary-600"
-                          >
-                            {outage.locationName || outage.barangay || 'Unspecified'}
-                          </Link>
-                        ) : (
-                          <span className="font-semibold text-navy-900">
-                            {outage.locationName || outage.barangay || 'Unspecified'}
-                          </span>
-                        )}
-                        <p className="mt-0.5 max-w-xs truncate text-xs text-navy-500">
-                          {outage.reportKey ? `${outage.reportKey} · ` : ''}
-                          {outage.description || 'No description'}
-                        </p>
-                      </TD>
-                      <TD>{humanize(outage.category, '—')}</TD>
-                      <TD>
-                        {outage.severity ? (
-                          <Badge tone={severityTone(outage.severity)}>{humanize(outage.severity)}</Badge>
-                        ) : (
-                          '—'
-                        )}
-                      </TD>
-                      <TD>
+                  <Popup>
+                    <div className="font-montserrat">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className="rounded-full border px-2 py-0.5 text-[8px] font-extrabold tracking-[0.14em]"
+                          style={{
+                            color: style.color,
+                            borderColor: `${style.color}45`,
+                            backgroundColor: `${style.color}18`,
+                          }}
+                        >
+                          {style.label}
+                        </span>
                         {outage.status ? (
-                          <Badge tone={statusTone(outage.status)}>{humanize(outage.status)}</Badge>
-                        ) : (
-                          '—'
-                        )}
-                        {owned ? (
-                          <Badge tone="primary" className="ml-1">
-                            Mine
-                          </Badge>
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-[8px] font-extrabold tracking-[0.08em] ${statusClasses(outage.status)}`}
+                          >
+                            {formatLabel(outage.status)}
+                          </span>
                         ) : null}
-                      </TD>
-                      <TD className="whitespace-nowrap text-xs text-navy-500">
-                        {formatDateTime(outage.createdAt)}
-                      </TD>
-                      <TD align="right">
-                        {owned ? (
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              icon={Pencil}
-                              onClick={() => openEdit(outage)}
-                              aria-label={`Edit report ${outage.reportKey || outage.id}`}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              icon={Trash2}
-                              className="text-danger-600"
-                              onClick={() => setDeleting(outage)}
-                              aria-label={`Cancel report ${outage.reportKey || outage.id}`}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-navy-300">Read only</span>
-                        )}
-                      </TD>
-                    </TR>
+                      </div>
+                      <p className="mt-2 text-sm font-bold text-white">
+                        {outage.locationName || outage.barangay || 'Outage report'}
+                      </p>
+                      {outage.description ? (
+                        <p className="mt-1 max-w-[16rem] text-xs leading-relaxed text-white/55">
+                          {outage.description}
+                        </p>
+                      ) : null}
+                      <div className="mt-2.5 flex items-center justify-between gap-3 text-[9px] font-semibold uppercase tracking-wide text-white/35">
+                        <span className="truncate">{formatCategory(outage.category)}</span>
+                        <span className="shrink-0">{formatRelativeTime(outage.createdAt)}</span>
+                      </div>
+                      {isOwnedBy(outage, null, { myIds }) ? (
+                        <Link
+                          to={`/dashboard/outages/${outage.id}`}
+                          className="mt-3 inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide !text-[#FFBB02] hover:!text-[#FFD400]"
+                        >
+                          View report details
+                          <ChevronRight className="h-3 w-3" aria-hidden="true" />
+                        </Link>
+                      ) : null}
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              );
+            })}
+            </AppMap>
+
+            <div className="pointer-events-none absolute left-3 top-3 z-[500] rounded-full border border-white/10 bg-[#0B0D20]/80 px-3 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-white/60 shadow-xl backdrop-blur-md">
+              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[#34FB34]" />
+              {mappableReports.length} plotted
+            </div>
+
+            <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-2xl border border-white/10 bg-[#0B0D20]/80 p-3 shadow-2xl backdrop-blur-md">
+              <p className="text-[8px] font-extrabold uppercase tracking-[0.2em] text-white/35">
+                Severity level
+              </p>
+              <ul className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
+                {[
+                  { label: 'Critical', color: '#FF2E1F' },
+                  { label: 'Moderate', color: '#FFBB02' },
+                  { label: 'Minor', color: '#34FB34' },
+                  { label: 'Unknown', color: '#9CA3AF' },
+                ].map((item) => (
+                  <li key={item.label} className="flex items-center gap-1.5 text-[9px] text-white/55">
+                    <span
+                      className="h-1.5 w-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    {item.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {!feedQuery.isLoading && !feedQuery.isError && !mappableReports.length ? (
+              <div className="pointer-events-none absolute inset-x-3 top-14 z-[450] flex justify-center">
+                <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-[#0B0D20]/80 px-3.5 py-2 text-[10px] font-semibold text-white/65 shadow-lg backdrop-blur-md">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-[#FFBB02]" aria-hidden="true" />
+                  <span className="truncate">No mapped reports yet</span>
+                  <span className="hidden truncate text-white/35 sm:inline">
+                    · Reports with a saved pin appear here
+                  </span>
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          <aside className="flex h-[440px] w-full flex-col overflow-hidden rounded-2xl border border-white/5 bg-[#31324C]/20 shadow-[0_20px_50px_rgba(0,0,0,0.25)] lg:h-[550px] xl:w-[420px] xl:shrink-0">
+            <div className="border-b border-white/5 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-extrabold tracking-tight text-white">Live Outage Feed</h2>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-[9px] text-white/40">
+                    <Clock3 className="h-3 w-3" aria-hidden="true" />
+                    Updated {feedQuery.dataUpdatedAt ? formatTime(feedQuery.dataUpdatedAt) : '—'} ·
+                    refreshes every 10s
+                  </p>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#34FB34]/20 bg-[#34FB34]/10 px-2 py-1 text-[8px] font-extrabold tracking-[0.16em] text-[#34FB34]">
+                  <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#34FB34] opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#34FB34]" />
+                  </span>
+                  LIVE
+                </span>
+              </div>
+
+              <div className="mt-2.5 grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-[#03041A]/60 p-1">
+                {[
+                  { value: 'all', label: 'All Reports', count: reports.length },
+                  { value: 'mine', label: 'My Reports', count: myIds.length },
+                ].map((option) => {
+                  const active = scope === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => switchScope(option.value)}
+                      aria-pressed={active}
+                      className={`flex h-8 items-center justify-center gap-1.5 rounded-lg text-[11px] font-bold transition ${
+                        active
+                          ? 'bg-[#FFBB02] text-[#191400] shadow-[0_4px_16px_rgba(255,187,2,0.16)]'
+                          : 'text-white/45 hover:bg-white/5 hover:text-white/75'}
+                      }`}
+                    >
+                      {option.label}
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 text-[8px] font-extrabold ${
+                          active ? 'bg-[#191400]/15 text-[#191400]' : 'bg-white/10 text-white/40'}
+                        }`}
+                      >
+                        {option.count}
+                      </span>
+                    </button>
                   );
                 })}
-              </TBody>
-            </Table>
-          </div>
-        )}
-      />
-      </MapWorkspace>
+              </div>
 
-      <OutageFormModal
-        open={formOpen}
-        outage={editing}
-        onClose={() => {
-          setFormOpen(false);
-          setEditing(null);
-        }}
-      />
+              <div className="mt-2 grid grid-cols-3 gap-1.5">
+                {[
+                  { label: 'Active', value: stats.active, icon: Activity, color: '#22D3EE' },
+                  { label: 'Critical', value: stats.critical, icon: AlertTriangle, color: '#FF2E1F' },
+                  { label: 'Homes', value: stats.affectedHomes, icon: Home, color: '#FFBB02' },
+                ].map((tile) => {
+                  const Icon = tile.icon;
+                  return (
+                    <div
+                      key={tile.label}
+                      className="rounded-xl border border-white/5 bg-[#1C1D30]/40 px-2 py-1.5"
+                    >
+                      <div className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-[0.12em] text-white/40">
+                        <Icon className="h-2.5 w-2.5" style={{ color: tile.color }} aria-hidden="true" />
+                        {tile.label}
+                      </div>
+                      <p className="mt-0.5 text-base font-black leading-none text-white">
+                        {tile.value.toLocaleString('en-PH')}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
 
-      <ConfirmDialog
-        open={Boolean(deleting)}
-        title="Cancel this outage report?"
-        description="Your report is withdrawn from the community feed. This cannot be undone."
-        confirmLabel="Cancel report"
-        loading={deleteMutation.isPending}
-        onClose={() => setDeleting(null)}
-        onConfirm={async () => {
-          await deleteMutation.mutateAsync(deleting.id);
-        }}
-      />
-    </div>
+              <div className="mt-2 flex items-center gap-1">
+                {STATUS_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => changeStatus(option.value)}
+                    aria-pressed={status === option.value}
+                    className={`h-7 rounded-full border px-2.5 text-[9px] font-bold transition ${
+                      status === option.value
+                        ? 'border-[#FFBB02]/40 bg-[#FFBB02]/15 text-[#FFBB02]'
+                        : 'border-white/10 bg-transparent text-white/45 hover:border-white/20 hover:text-white/70'}
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+                {feedQuery.isFetching ? (
+                  <Loader2 className="ml-auto h-3 w-3 animate-spin text-white/25" aria-label="Refreshing feed" />
+                ) : null}
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              {feedQuery.isLoading ? (
+                <div className="flex h-full min-h-[220px] flex-col items-center justify-center text-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#FFBB02]" aria-hidden="true" />
+                  <p className="mt-2 text-xs font-semibold text-white/45">Loading outage reports…</p>
+                </div>
+              ) : feedQuery.isError && !feedQuery.data ? (
+                <div className="flex h-full min-h-[220px] flex-col items-center justify-center px-4 text-center">
+                  <AlertTriangle className="h-6 w-6 text-[#FF2E1F]" aria-hidden="true" />
+                  <p className="mt-2 text-sm font-bold text-white">Feed temporarily offline</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-white/40">
+                    {toUserMessage(feedQuery.error, 'We could not load the outage feed.')}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => feedQuery.refetch()}
+                    className="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-bold text-white/70 transition:hover:bg-white/10"
+                  >
+                    Try again
+                  </button>
+                </div>
+              ) : !filteredReports.length ? (
+                <div className="flex h-full min-h-[220px] flex-col items-center justify-center px-4 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
+                    <Zap className="h-5 w-5 text-[#FFBB02]" aria-hidden="true" />
+                  </div>
+                  <p className="mt-3 text-sm font-bold text-white">{emptyTitle}</p>
+                  <p className="mt-1 max-w-[240px] text-[11px] leading-relaxed text-white/40">
+                    {search.trim()
+                      ? 'Try a different location, description or category.'
+                      : 'New community reports will appear here automatically.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={openCreate}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#FFBB02]/30 bg-[#FFBB02]/10 px-3 py-1.5 text-[10px] font-bold text-[#FFBB02] transition:hover:bg-[#FFBB02]/15"
+                  >
+                    <Plus className="h-3 w-3" aria-hidden="true" />
+                    Report an outage
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {feedQuery.isError ? (
+                    <p className="rounded-lg border border-[#FFBB02]/20 bg-[#FFBB02]/10 px-2.5 py-2 text-[9px] leading-relaxed text-[#FFD400]">
+                      Showing the last known reports. Reconnecting…
+                    </p>
+                  ) : null}
+
+                  {pagedReports.map((outage) => {
+                    const style = severityStyle(outage.severity);
+                    const owned = isOwnedBy(outage, null, { myIds });
+                    return (
+                      <article
+                        key={outage.id}
+                        className={`group rounded-xl border p-2.5 transition duration-200 hover:-translate-y-0.5 ${
+                          owned
+                            ? 'border-[#FFBB02]/25 bg-[#1C1D30]/50 hover:border-[#FFBB02]/40'
+                            : 'border-white/5 bg-[#1C1D30]/35 hover:border-white/15'}
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${style.swatch}`} />
+                            <span
+                              className={`rounded-full border px-1.5 py-0.5 text-[8px] font-extrabold tracking-[0.12em] ${style.badge}`}
+                            >
+                              {style.label}
+                            </span>
+                            {owned ? (
+                              <span className="rounded-full border border-[#FFBB02]/25 bg-[#FFBB02]/10 px-1.5 py-0.5 text-[8px] font-extrabold tracking-[0.1em] text-[#FFBB02]">
+                                YOURS
+                              </span>
+                            ) : null}
+                            {outage.status ? (
+                              <span
+                                className={`rounded-full border px-1.5 py-0.5 text-[8px] font-bold tracking-[0.06em] ${statusClasses(outage.status)}`}
+                              >
+                                {formatLabel(outage.status)}
+                              </span>
+                            ) : null}
+                          </div>
+                          <span className="shrink-0 text-[8.5px] font-medium text-white/35">
+                            {formatRelativeTime(outage.createdAt)}
+                          </span>
+                        </div>
+
+                        <h3 className="mt-1 truncate text-[13px] font-bold leading-tight text-white">
+                          {owned ? (
+                            <Link
+                              to={`/dashboard/outages/${outage.id}`}
+                              className="transition hover:text-[#FFBB02]"
+                            >
+                              {outage.locationName || outage.barangay || 'Outage report'}
+                            </Link>
+                          ) : (
+                            outage.locationName || outage.barangay || 'Outage report'
+                          )}
+                        </h3>
+                        <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-white/50">
+                          {outage.description || 'No description provided.'}
+                        </p>
+
+                        <div className="mt-1.5 flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-white/40">
+                            <Zap className="h-2.5 w-2.5 shrink-0 text-[#FFBB02]/60" aria-hidden="true" />
+                            <span className="truncate">{formatCategory(outage.category)}</span>
+                            {outage.barangay ? (
+                              <>
+                                <span aria-hidden="true">·</span>
+                                <span className="truncate">{outage.barangay}</span>
+                              </>
+                            ) : null}
+                          </div>
+
+                          {owned ? (
+                            <div className="flex shrink-0 items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => openEdit(outage)}
+                                className="inline-flex h-6 items-center gap-1 rounded-md border border-white/10 bg-white/[0.03] px-1.5 text-[9px] font-bold text-white/55 transition:hover:border-[#FFBB02]/30:hover:bg-[#FFBB02]/10:hover:text-[#FFBB02]"
+                                aria-label={`Edit report ${outage.reportKey || outage.id}`}
+                              >
+                                <Pencil className="h-2.5 w-2.5" aria-hidden="true" />
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirming(outage)}
+                                className="inline-flex h-6 items-center gap-1 rounded-md border border-white/10 bg-white/[0.03] px-1.5 text-[9px] font-bold text-white/55 transition:hover:border-[#FF2E1F]/30:hover:bg-[#FF2E1F]/10:hover:text-[#FF2E1F]"
+                                aria-label={`Delete report ${outage.reportKey || outage.id}`}
+                              >
+                                <Trash2 className="h-2.5 w-2.5" aria-hidden="true" />
+                                Delete
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      {editor ? (
+        <OutageFormModal
+          key={editor.outage?.id ?? 'new'}
+          open
+          outage={editor.outage}
+          onClose={() => setEditor(null)}
+          onResult={(result) => setFeedback(result)}
+        />
+      ) : null}
+
+      {confirming ? (
+        <ReportFeedbackDialog
+          open
+          type="warning"
+          danger
+          title="Delete this report?"
+          message={`"${confirming.locationName || confirming.barangay || 'This report'}" will be removed from the community feed. This cannot be undone.`}
+          confirmLabel="Delete report"
+          showCancel
+          loading={deleteMutation.isPending}
+          onConfirm={handleDelete}
+          onClose={() => setConfirming(null)}
+        />
+      ) : null}
+
+      {feedback ? (
+        <ReportFeedbackDialog
+          open
+          type={feedback.type}
+          title={feedback.title}
+          message={feedback.message}
+          onClose={() => setFeedback(null)}
+        />
+      ) : null}
+      </div>
   );
 }

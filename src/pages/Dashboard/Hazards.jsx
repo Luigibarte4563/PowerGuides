@@ -1,18 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { AlertTriangle, CalendarClock, Plus, RefreshCw } from 'lucide-react';
-import PageHeader from '@/components/layout/PageHeader';
+import { ZoomControl } from 'react-leaflet';
+import { Activity, AlertTriangle, CalendarClock, CheckCircle2, Plus, RefreshCw } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import Modal from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import DataView from '@/components/DataView';
 import RecordCard from '@/components/RecordCard';
 import AppMap, { FitPoints, MapLegend, MapPoints } from '@/components/Map';
-import MapWorkspace from '@/components/MapWorkspace';
+import MapWorkspace, { FeedActions, FeedPills } from '@/components/MapWorkspace';
 import { useAuth } from '@/context/AuthContext';
 import { useReference } from '@/context/ReferenceContext';
 import { useToast } from '@/context/ToastContext';
@@ -22,7 +20,7 @@ import { hazardsApi } from '@/api';
 import { QUERY_KEYS } from '@/utils/constants';
 import { isOwnedBy, readHazard } from '@/utils/records';
 import { severityTone, statusTone } from '@/utils/constants';
-import { formatDateTime, humanize } from '@/utils/formatters';
+import { formatDateTime, formatTime, humanize } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
 import HazardFormModal, { HAZARD_SEVERITY_OPTIONS } from './components/HazardFormModal';
 import { HAZARD_STATUSES } from '@/api';
@@ -99,16 +97,23 @@ export default function Hazards() {
     () => items.filter((item) => Number.isFinite(item.lat) && Number.isFinite(item.lng)),
     [items]
   );
-  const unlocatedCount = items.length - plotted.length;
 
   const mapSummary =
     plotted.length === 0
       ? 'No hazards with coordinates match your filters yet.'
       : `${plotted.length} hazard${plotted.length === 1 ? '' : 's'} plotted across Dagupan.`;
 
+  // Feed stat tiles, counted the same way the list filters do.
+  const openCount = items.filter((item) => item.status !== 'resolved').length;
+  const criticalCount = items.filter((item) =>
+    ['critical', 'high'].includes(String(item.severity).toLowerCase())
+  ).length;
+  const resolvedCount = items.filter((item) => item.status === 'resolved').length;
+
   const hazardMap = (
-    <AppMap zoom={13} className="h-full w-full">
+    <AppMap zoom={13} zoomControl={false} className="h-full w-full">
       {/* No explicit centre: FitPoints frames the hazards themselves. */}
+      <ZoomControl position="bottomright" />
       <FitPoints items={plotted} />
       <MapPoints items={plotted} toneFor={(item) => (item.severity ? severityTone(item.severity) : 'neutral')}>
         {(item) => (
@@ -150,80 +155,74 @@ export default function Hazards() {
   });
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Electrical Hazards"
-        description="Downed wires, exposed cables and sparking connections reported by the community."
+    <div
+      data-theme="dark"
+      className="min-h-full bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
+      <FeedActions
         actions={
-          <Button variant="primary" icon={Plus} onClick={() => setFormOpen(true)}>
+          <Button
+            variant="primary"
+            icon={Plus}
+            onClick={() => setFormOpen(true)}
+            className="rounded-xl px-5 shadow-[0_8px_24px_rgba(255,187,2,0.18)]"
+          >
             Report Hazard
           </Button>
         }
+        search={search}
+        onSearchChange={setSearch}
+        onClearSearch={() => setSearch('')}
+        searchId="hazard-search"
+        searchLabel="Search hazards"
+        searchPlaceholder="Search type, location, description…"
       />
 
       <MapWorkspace
         map={hazardMap}
-        mapTitle="Hazard map"
-        mapDescription={mapSummary}
-        mapFooter={
-          unlocatedCount > 0 ? (
-            <p className="text-xs text-navy-500">
-              {unlocatedCount} hazard{unlocatedCount === 1 ? '' : 's'} in this list{' '}
-              {unlocatedCount === 1 ? 'has' : 'have'} no coordinates, so{' '}
-              {unlocatedCount === 1 ? 'it is' : 'they are'} listed but not plotted.
-            </p>
-          ) : null
+        mapLabel="Hazard map"
+        mapTitle="Live Hazard Feed"
+        mapSubtitle={`${mapSummary}${listQuery.dataUpdatedAt ? ` · updated ${formatTime(listQuery.dataUpdatedAt)}` : ''}`}
+        stats={[
+          { label: 'Open', value: openCount, icon: Activity, color: '#22D3EE' },
+          { label: 'High risk', value: criticalCount, icon: AlertTriangle, color: '#FF2E1F' },
+          { label: 'Resolved', value: resolvedCount, icon: CheckCircle2, color: '#34FB34' },
+        ]}
+        pills={
+          <FeedPills
+            ariaLabel="Filter by status"
+            value={statusFilter || 'all'}
+            onChange={(value) => setStatusFilter(value === 'all' ? '' : value)}
+            options={[
+              { value: 'all', label: 'All' },
+              ...HAZARD_STATUSES.map((status) => ({ value: status, label: humanize(status) })),
+            ]}
+          />
         }
-      >
-
-      <Card className="card-hover">
-        <CardBody className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          <Input
-            label="Search"
-            placeholder="Search hazards"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <Select
-            label="Hazard type"
-            placeholder="All types"
-            options={hazardTypes}
-            value={typeFilter}
-            onChange={(event) => setTypeFilter(event.target.value)}
-          />
-          <Select
-            label="Severity"
-            placeholder="All severities"
-            options={HAZARD_SEVERITY_OPTIONS}
-            value={severityFilter}
-            onChange={(event) => setSeverityFilter(event.target.value)}
-          />
-          <Select
-            label="Status"
-            placeholder="All statuses"
-            options={HAZARD_STATUS_OPTIONS}
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          />
-          <div className="flex items-end">
-            <Button
-              variant="outline"
-              fullWidth
-              onClick={() => {
-                setSearch('');
-                setTypeFilter('');
-                setSeverityFilter('');
-                setStatusFilter('');
-              }}
-            >
-              Clear filters
-            </Button>
+        filters={
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
+            <Select
+              aria-label="Filter by hazard type"
+              placeholder="All types"
+              options={hazardTypes}
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value)}
+              className="h-9 py-0 text-xs"
+            />
+            <Select
+              aria-label="Filter by severity"
+              placeholder="All severities"
+              options={HAZARD_SEVERITY_OPTIONS}
+              value={severityFilter}
+              onChange={(event) => setSeverityFilter(event.target.value)}
+              className="h-9 py-0 text-xs"
+            />
           </div>
-        </CardBody>
-      </Card>
-
-
-
+        }
+        plottedCount={plotted.length}
+        mapEmpty={!listQuery.isLoading && !listQuery.isError && plotted.length === 0}
+        mapEmptyLabel="No mapped hazards yet"
+      >
       <DataView
         isLoading={listQuery.isLoading}
         error={listQuery.isError}

@@ -192,7 +192,7 @@ function LoginAside() {
       <ul className="mt-8 space-y-5">
         {ASIDE_POINTS.map((point) => (
           <li key={point.title} className="flex gap-3">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-white text-primary-600 shadow-card">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-primary-500/15 text-primary-400">
               <point.icon className="h-5 w-5" aria-hidden="true" />
             </span>
             <div>
@@ -204,7 +204,7 @@ function LoginAside() {
       </ul>
 
       <p className="mt-8 flex items-start gap-2 rounded-card bg-white p-4 text-xs text-navy-500 shadow-card">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" aria-hidden="true" />
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-500" aria-hidden="true" />
         Never approach a fallen power line. Report it from a safe distance instead.
       </p>
     </div>

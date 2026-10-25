@@ -22,7 +22,7 @@ export default function PublicLayout() {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-white dark:bg-navy-950">
+    <div data-surface="dark" className="flex min-h-screen flex-col bg-white dark:bg-navy-950">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>

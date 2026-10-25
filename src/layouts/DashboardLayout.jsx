@@ -1,50 +1,44 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import clsx from 'clsx';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import { useAuth } from '@/context/AuthContext';
 import { navItemsForRole } from '@/routes/navItems';
 
-/** Persisted so the sidebar width survives a reload. */
-const COLLAPSED_KEY = 'powerguide.sidebar.collapsed';
-
-function readCollapsed() {
-  try {
-    return window.localStorage.getItem(COLLAPSED_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
+/**
+ * Full-height, dark map workspaces (the Outages layout family). These pages
+ * render edge-to-edge with no padded container; every other page keeps the
+ * standard padded `max-w-7xl` column inside the same shell. Detail routes
+ * (`/dashboard/outages/:id`, ...) stay in the padded column.
+ */
+const WORKSPACE_PATHS = new Set([
+  '/dashboard/outages',
+  '/dashboard/hazards',
+  '/dashboard/floods',
+  '/dashboard/heatmap',
+  '/dashboard/maintenance',
+  '/dashboard/power-stations',
+  '/dashboard/risk-areas',
+]);
 
 /** Dashboard chrome: persistent sidebar + top bar with the routed page inside. */
 export default function DashboardLayout() {
   const { role } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Icon-only rail on desktop. Never collapsed on mobile - there the sidebar is a
-  // temporary drawer, so a collapsed rail would hide the labels with no room for
-  // them, and `open` already controls visibility.
-  const [collapsed, setCollapsed] = useState(readCollapsed);
   const location = useLocation();
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  const toggleCollapsed = useCallback(() => {
-    setCollapsed((current) => {
-      const next = !current;
-      try {
-        window.localStorage.setItem(COLLAPSED_KEY, next ? '1' : '0');
-      } catch {
-        /* private mode: the rail just resets on reload */
-      }
-      return next;
-    });
-  }, []);
+  const isWorkspace = WORKSPACE_PATHS.has(location.pathname);
 
   return (
-    <div className="min-h-screen bg-canvas dark:bg-navy-950">
+    <div
+      data-theme="dark"
+      data-surface="dark"
+      className="flex h-screen overflow-hidden bg-[#03041A] font-montserrat text-white"
+    >
       <a href="#dashboard-content" className="skip-link">
         Skip to main content
       </a>
@@ -52,19 +46,22 @@ export default function DashboardLayout() {
       <Sidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        collapsed={collapsed}
-        onToggleCollapsed={toggleCollapsed}
         items={navItemsForRole(role)}
       />
 
-      {/* Reserve room for the rail: the sidebar is fixed, so the content has to
-          be offset by whichever width it currently is. */}
-      <div className={clsx('transition-[padding] duration-200', collapsed ? 'lg:pl-[4.75rem]' : 'lg:pl-[17.5rem]')}>
+      <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenSidebar={() => setSidebarOpen(true)} />
-        <main id="dashboard-content" className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="mx-auto w-full max-w-7xl">
-            <Outlet />
-          </div>
+        <main
+          id="dashboard-content"
+          className="min-w-0 flex-1 overflow-y-auto overscroll-contain bg-[#03041A]"
+        >
+          {isWorkspace ? (
+            <Outlet context={{ openSidebar: () => setSidebarOpen(true) }} />
+          ) : (
+            <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+              <Outlet />
+            </div>
+          )}
         </main>
       </div>
     </div>

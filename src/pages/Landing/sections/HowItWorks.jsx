@@ -45,7 +45,7 @@ export default function HowItWorks() {
               <span className="absolute -top-3 left-6 inline-flex h-8 w-8 items-center justify-center rounded-full bg-navy-900 text-sm font-extrabold text-primary-300">
                 {index + 1}
               </span>
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-control bg-primary-100 text-primary-700">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-control bg-primary-500/15 text-primary-400">
                 <step.icon className="h-5 w-5" aria-hidden="true" />
               </span>
               <h3 className="mt-4 text-base font-bold text-navy-900">{step.title}</h3>
