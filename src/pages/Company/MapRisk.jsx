@@ -246,7 +246,7 @@ export default function MapRisk() {
             </AppMap>
           </div>
 
-          <Card className=" card-hover\
+          <Card className="card-hover">
             <CardHeader description="Each layer loads on the server as soon as the page opens, and is drawn only while switched on.">
               Layer controls
             </CardHeader>
@@ -301,7 +301,7 @@ export default function MapRisk() {
         </div>
 
         <div className="space-y-6">
-          <Card className=" card-hover\
+          <Card className="card-hover">
             <CardHeader description="Drop a point to see combined flood and hazard risk around it.">
               <span className="inline-flex items-center gap-2">
                 <Search className="h-4 w-4 text-primary-600" aria-hidden="true" />
@@ -386,7 +386,7 @@ export default function MapRisk() {
             </CardBody>
           </Card>
 
-          <Card className=" card-hover\
+          <Card className="card-hover">
             <CardHeader description="Persist a cluster centred on the probed point.">
               Save a cluster
             </CardHeader>
@@ -446,7 +446,7 @@ export default function MapRisk() {
             </CardBody>
           </Card>
 
-          <Card className=" card-hover\
+          <Card className="card-hover">
             <CardHeader>Stored clusters ({clusters.length})</CardHeader>
             <CardBody>
               {clusterQuery.isLoading ? (
