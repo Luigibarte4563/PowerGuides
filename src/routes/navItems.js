@@ -19,7 +19,9 @@ import {
  * Used by the sidebar, the top-bar page title and the breadcrumb helper.
  *
  * An item may carry `roles` to limit it to specific roles; `DashboardLayout` filters on
- * it. Without one, the item is shown to everyone. Hiding an item is a convenience only -
+ * it. Without one, the item is shown to everyone. `sidebar: false` keeps an item out of
+ * the sidebar while `findNavItem` still resolves its page title (used by routes that the
+ * top bar links to instead). Hiding an item is a convenience only -
  * the route itself and the API behind it do the real checking.
  */
 export const DASHBOARD_NAV = [
@@ -41,8 +43,8 @@ export const DASHBOARD_NAV = [
   { to: '/dashboard/location', label: 'My Location', icon: MapPin, group: 'Tools' },
   { to: '/dashboard/battery', label: 'Battery Tracking', icon: BatteryCharging, group: 'Tools' },
   { to: '/dashboard/safety-timers', label: 'Safety Timers', icon: Timer, group: 'Tools' },
-  { to: '/dashboard/notifications', label: 'Notifications', icon: Bell, group: 'Account' },
-  { to: '/dashboard/profile', label: 'Profile', icon: LayoutDashboard, group: 'Account' },
+  { to: '/dashboard/notifications', label: 'Notifications', icon: Bell, group: 'Account', sidebar: false },
+  { to: '/dashboard/profile', label: 'Profile', icon: LayoutDashboard, group: 'Account', sidebar: false },
 ];
 
 /** Group order used by the sidebar. */

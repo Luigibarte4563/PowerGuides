@@ -41,7 +41,6 @@ export default function AdminLayout() {
         groups={ADMIN_NAV_GROUPS}
         homeTo="/admin"
         notificationsTo="/company/notifications"
-        profileTo="/company/profile"
         ariaLabel="Admin Dashboard navigation"
       />
 

@@ -49,7 +49,6 @@ export default function CompanyLayout() {
         groups={COMPANY_NAV_GROUPS}
         homeTo="/company"
         notificationsTo="/company/notifications"
-        profileTo="/company/profile"
         ariaLabel="Electric Company Dashboard navigation"
       />
 

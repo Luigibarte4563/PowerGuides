@@ -25,8 +25,8 @@ export const COMPANY_NAV = [
   { to: '/company/maintenance', label: 'Maintenance', icon: Wrench, group: 'Plan' },
   { to: '/company/map', label: 'Map & Risk', icon: MapIcon, group: 'Plan' },
   { to: '/company/power-stations', label: 'Power Stations', icon: Plug, group: 'Assets' },
-  { to: '/company/notifications', label: 'Notifications', icon: Bell, group: 'Account' },
-  { to: '/company/profile', label: 'Profile', icon: User, group: 'Account' },
+  { to: '/company/notifications', label: 'Notifications', icon: Bell, group: 'Account', sidebar: false },
+  { to: '/company/profile', label: 'Profile', icon: User, group: 'Account', sidebar: false },
 ];
 
 /** Group order used by the sidebar. */

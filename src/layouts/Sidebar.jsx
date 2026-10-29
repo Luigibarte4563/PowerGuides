@@ -1,32 +1,19 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, X } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { X } from 'lucide-react';
 import clsx from 'clsx';
 import Logo from '@/components/Logo';
-import { useAuth } from '@/context/AuthContext';
 import { DASHBOARD_NAV, NAV_GROUPS } from '@/routes/navItems';
 import { useNotifications } from '@/hooks/useNotifications';
-
-function initials(name = '') {
-  return (
-    name
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join('') || 'U'
-  );
-}
 
 /**
  * App sidebar - the Outages page treatment on every page.
  *
  * A fixed 340px dark panel (`lg:static`, so the shell is a flex row and the
- * content flows beside it) with the account controls pinned to the bottom. On
- * mobile it is a temporary drawer behind the top bar's hamburger.
+ * content flows beside it). On mobile it is a temporary drawer behind the top
+ * bar's hamburger.
  *
  * The resident and company apps share this chrome, so `items` / `groups` /
- * `homeTo` / `notificationsTo` / `profileTo` are props; they default to the
- * resident app.
+ * `homeTo` / `notificationsTo` are props; they default to the resident app.
  */
 export default function Sidebar({
   open,
@@ -35,21 +22,16 @@ export default function Sidebar({
   groups = NAV_GROUPS,
   homeTo = '/dashboard',
   notificationsTo = '/dashboard/notifications',
-  profileTo = '/dashboard/profile',
   ariaLabel = 'Dashboard navigation',
 }) {
   const { unreadCount } = useNotifications();
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
 
   const grouped = groups
-    .map((group) => ({ group, items: items.filter((item) => item.group === group) }))
+    .map((group) => ({
+      group,
+      items: items.filter((item) => item.group === group && item.sidebar !== false),
+    }))
     .filter((entry) => entry.items.length > 0);
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/', { replace: true });
-  };
 
   return (
     <>
@@ -140,46 +122,6 @@ export default function Sidebar({
             </div>
           ))}
         </nav>
-
-        <div className="shrink-0 border-t border-white/10 p-4">
-          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-2.5">
-            <Link
-              to={profileTo}
-              onClick={onClose}
-              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl"
-            >
-              {user?.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt=""
-                  className="h-9 w-9 shrink-0 rounded-full object-cover"
-                />
-              ) : (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FEBB02] text-[11px] font-extrabold text-[#03041A]">
-                  {initials(user?.name)}
-                </span>
-              )}
-              <span className="min-w-0">
-                <span className="block truncate text-xs font-bold text-white">
-                  {user?.name || 'Community member'}
-                </span>
-                <span className="mt-0.5 block truncate text-[10px] text-white/45">
-                  {user?.email || 'No email on file'}
-                </span>
-              </span>
-            </Link>
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="shrink-0 rounded-xl p-2 text-white/45 transition hover:bg-white/10 hover:text-white"
-              aria-label="Log out"
-              title="Log out"
-            >
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
       </aside>
     </>
   );
