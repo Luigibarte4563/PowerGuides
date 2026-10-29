@@ -43,11 +43,13 @@
 [data-theme='dark'] [data-surface='dark'] .bg-navy-100 {
   background-color: #262840;
 }
+/* Borders follow the Outages workspace: faint white hairlines instead of solid
+   navy tints, so cards read as glass panels on the dark canvas. */
 [data-theme='dark'] [data-surface='dark'] .border-navy-100 {
-  border-color: #262840;
+  border-color: rgba(255, 255, 255, 0.06);
 }
 [data-theme='dark'] [data-surface='dark'] .border-navy-200 {
-  border-color: #3d3f5c;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 [data-theme='dark'] [data-surface='dark'] .shadow-card {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);

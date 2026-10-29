@@ -37,8 +37,9 @@ import { roleLabel } from '@/utils/roles';
  * endpoint is admin-only, and this page is only reachable behind `RequireRole
  * (['admin'])`, so no request here can answer 403 for the signed-in account.
  */
-const AXIS_TICK = { fontSize: 11, fill: '#4A5A78' };
-const GRID_STROKE = '#E4E9F2';
+/* Chart chrome in workspace palette: muted slate ticks, navy panel gridlines. */
+const AXIS_TICK = { fontSize: 11, fill: '#8B8FA8' };
+const GRID_STROKE = '#31324C';
 
 function shortDay(date) {
   const day = new Date(`${date}T00:00:00`);

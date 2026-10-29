@@ -81,9 +81,11 @@ export default {
         sans: ['Montserrat', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
         montserrat: ['Montserrat', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
+      // Match the Outages workspace geometry: cards are rounded-2xl (16px),
+      // controls are rounded-xl (12px). Used by every shared UI component.
       borderRadius: {
-        card: '12px',
-        control: '10px',
+        card: '16px',
+        control: '12px',
       },
       boxShadow: {
         card: '0 1px 2px rgba(16, 27, 45, 0.04), 0 4px 16px rgba(16, 27, 45, 0.06)',

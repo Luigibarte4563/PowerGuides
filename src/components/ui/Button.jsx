@@ -12,7 +12,7 @@ import clsx from 'clsx';
  */
 const VARIANTS = {
   primary:
-    'bg-primary-500 text-navy-950 hover:bg-primary-400 active:bg-primary-600 disabled:bg-primary-200 disabled:text-navy-400 dark:disabled:bg-primary-500/30 dark:disabled:text-navy-300',
+    'bg-primary-500 text-[#191400] shadow-[0_8px_24px_rgba(255,187,2,0.18)] hover:bg-primary-400 active:bg-primary-600 disabled:bg-primary-200 disabled:text-navy-400 disabled:shadow-none dark:disabled:bg-primary-500/30 dark:disabled:text-navy-300',
   secondary:
     'bg-navy-900 text-white hover:bg-navy-800 active:bg-navy-950 disabled:bg-navy-300 dark:bg-navy-100 dark:text-navy-900 dark:hover:bg-white dark:active:bg-navy-200 dark:disabled:bg-navy-700 dark:disabled:text-navy-500',
   outline:

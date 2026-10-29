@@ -28,7 +28,7 @@ export default function Badge({
     <span
       title={title}
       className={clsx(
-        'inline-flex items-center gap-1 rounded-full font-semibold ring-1 ring-inset',
+        'inline-flex items-center gap-1 rounded-full font-extrabold uppercase tracking-[0.08em] ring-1 ring-inset',
         size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs',
         TONES[tone] || TONES.neutral,
         className

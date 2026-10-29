@@ -561,11 +561,11 @@ function HistoryModal({ device, onClose }) {
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E4E9F2" />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6C7C9B' }} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#6C7C9B' }} unit="%" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#31324C" />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#8B8FA8' }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#8B8FA8' }} unit="%" />
                 <Tooltip
-                  contentStyle={{ borderRadius: 12, border: '1px solid #E4E9F2', fontSize: 12 }}
+                  contentStyle={{ borderRadius: 12, border: '1px solid #31324C', fontSize: 12 }}
                   formatter={(value) => [`${value}%`, 'Charge']}
                 />
                 <Line
