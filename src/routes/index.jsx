@@ -5,6 +5,7 @@ import CompanyLayout from '@/layouts/CompanyLayout';
 import ProtectedRoute from './ProtectedRoute';
 import PublicOnlyRoute from './PublicOnlyRoute';
 import RequireRole from './RequireRole';
+import { ADMIN_ROLES } from '@/utils/roles';
 
 import Landing from '@/pages/Landing';
 import Login from '@/pages/Auth/Login';
@@ -38,6 +39,10 @@ import CompanyPowerStations from '@/pages/Company/PowerStations';
 import CompanyNotifications from '@/pages/Company/Notifications';
 import CompanyHazards from '@/pages/Company/Hazards';
 import CompanyProfile from '@/pages/Company/Profile';
+
+import AdminLayout from '@/layouts/AdminLayout';
+import AdminOverview from '@/pages/Admin/Overview';
+import AdminUsers from '@/pages/Admin/Users';
 
 /**
  * Route map (Section 7 of the requirements).
@@ -100,6 +105,21 @@ export default function AppRoutes() {
             <Route path="notifications" element={<CompanyNotifications />} />
             <Route path="hazards" element={<CompanyHazards />} />
             <Route path="profile" element={<CompanyProfile />} />
+          </Route>
+        </Route>
+      </Route>
+
+      {/*
+        `/admin` is the third app: user & role management and platform analytics,
+        which no other app can do. Same two-stage gate as `/company`, but the
+        allow-list has a single entry (`admin`), so any other account - including
+        staff - gets the access-denied page on a deep link.
+      */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<RequireRole allowed={ADMIN_ROLES} />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminOverview />} />
+            <Route path="users" element={<AdminUsers />} />
           </Route>
         </Route>
       </Route>

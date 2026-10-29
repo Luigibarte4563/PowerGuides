@@ -246,5 +246,19 @@ export const COMPANY_QUERY_KEYS = {
   myAssignments: ['lineman-assignments', 'mine'],
 };
 
+/**
+ * Query keys for the `/admin` app (role `admin` only). Kept separate from the
+ * company keys for the same reason those are separate from the resident ones:
+ * a role change invalidates the directory and the stats together, and must not
+ * clobber any other app's caches.
+ */
+export const ADMIN_QUERY_KEYS = {
+  users: (params) => ['admin-users', params],
+  stats: ['admin-stats'],
+};
+
 /** Page size for the client-side tables (the staff endpoints return every row). */
 export const COMPANY_PAGE_SIZE = 25;
+
+/** Page size for the admin user directory (also a client-side table). */
+export const ADMIN_PAGE_SIZE = 25;

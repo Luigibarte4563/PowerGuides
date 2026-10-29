@@ -34,3 +34,4 @@ export {
   ACTIVE_ASSIGNMENT_STATUS,
   INACTIVE_ASSIGNMENT_STATUS,
 } from './linemanAssignments';
+export { adminApi } from './admin';

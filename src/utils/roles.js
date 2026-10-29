@@ -52,6 +52,9 @@ export const ROLE_LABELS = {
 /** `/company` is only reachable by these roles; everyone else gets access-denied. */
 export const COMPANY_ROLES = STAFF_ROLES;
 
+/** `/admin` is only reachable by this role; everyone else gets access-denied. */
+export const ADMIN_ROLES = [ROLE.ADMIN];
+
 export function normaliseRole(role) {
   return String(role ?? '')
     .trim()
