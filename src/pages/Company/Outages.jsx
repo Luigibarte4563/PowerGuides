@@ -9,6 +9,7 @@ import {
   Globe2,
   MapPin,
   Search,
+  UserCheck,
   Zap,
 } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
@@ -29,13 +30,14 @@ import { useReference } from '@/context/ReferenceContext';
 import { useToast } from '@/context/ToastContext';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useCompanyOutageList } from '@/hooks/useCompanyOutages';
-import { useMyAssignments } from '@/hooks/useLinemanAssignments';
+import { useMyAssignments, useInvalidateAssignments } from '@/hooks/useLinemanAssignments';
 import { companyOutagesApi } from '@/api';
 import { COMPANY_PAGE_SIZE, COMPANY_QUERY_KEYS, severityTone, statusTone } from '@/utils/constants';
 import { readCompanyOutage } from '@/utils/records';
 import { formatDateTime, formatRelativeTime, humanize } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
 import BulkStatusDialog from './components/BulkStatusDialog';
+import AssignmentFormModal from './components/AssignmentFormModal';
 import StatusChangeDialog from '@/components/StatusChangeDialog';
 
 const SCOPES = [
@@ -85,6 +87,8 @@ export default function Outages() {
   const [page, setPage] = useState(1);
   const [bulk, setBulk] = useState(null);
   const [statusTarget, setStatusTarget] = useState(null);
+  const [assigning, setAssigning] = useState(null);
+  const invalidateAssignments = useInvalidateAssignments();
   const debouncedSearch = useDebouncedValue(search);
 
   const isRaw = scope === 'raw';
@@ -376,9 +380,22 @@ export default function Outages() {
               { label: 'Reported', value: formatDateTime(outage.createdAt), icon: CalendarClock },
             ].filter(Boolean)}
             actions={
-              <Button size="sm" variant="outline" icon={ArrowUpDown} onClick={() => setStatusTarget(outage)}>
-                Change status
-              </Button>
+              <>
+                {isManager ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    icon={UserCheck}
+                    onClick={() => setAssigning(outage)}
+                    aria-label={`Assign a lineman in ${outage.barangay || 'this barangay'}`}
+                  >
+                    Assign
+                  </Button>
+                ) : null}
+                <Button size="sm" variant="outline" icon={ArrowUpDown} onClick={() => setStatusTarget(outage)}>
+                  Change status
+                </Button>
+              </>
             }
           />
         )}
@@ -459,6 +476,17 @@ export default function Outages() {
                         >
                           Status
                         </Button>
+                        {isManager ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            icon={UserCheck}
+                            onClick={() => setAssigning(outage)}
+                            aria-label={`Assign a lineman for report ${outage.reportKey || outage.id}`}
+                          >
+                            Assign
+                          </Button>
+                        ) : null}
                       </div>
                     </TD>
                   </TR>
@@ -497,6 +525,14 @@ export default function Outages() {
         reports={rows}
         onClose={() => setBulk(null)}
         onCompleted={bulkDone}
+      />
+
+      <AssignmentFormModal
+        open={Boolean(assigning)}
+        assignment={null}
+        initialBarangayId={assigning?.barangayId}
+        onClose={() => setAssigning(null)}
+        onSaved={invalidateAssignments}
       />
     </div>
   );

@@ -10,11 +10,11 @@ import { LayoutDashboard, Users } from 'lucide-react';
  */
 export const ADMIN_NAV = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true, group: 'Platform' },
-  { to: '/admin/users', label: 'Users & Roles', icon: Users, group: 'Platform' },
+  { to: '/admin/users', label: 'Users & Roles', icon: Users, group: 'People' },
 ];
 
 /** Group order used by the sidebar. */
-export const ADMIN_NAV_GROUPS = ['Platform'];
+export const ADMIN_NAV_GROUPS = ['Platform', 'People'];
 
 export function findAdminNavItem(pathname) {
   return (

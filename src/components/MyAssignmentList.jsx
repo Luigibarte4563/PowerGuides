@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { MapPin, ShieldCheck, UserCheck } from 'lucide-react';
+import { MapPin, ShieldCheck, UserCheck, Wrench } from 'lucide-react';
 import Badge from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { TBody, TD, TH, THead, TR, Table } from './ui/Table';
 import DataView from './DataView';
 import BarangayOutagesModal from './BarangayOutagesModal';
+import BarangayMaintenanceModal from './BarangayMaintenanceModal';
+import { workTypeLabel } from '@/api';
 
 /**
  * A lineman's own assigned barangays, rendered for whichever screen asks for it.
@@ -39,8 +41,15 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
    * replaced a short, scoped answer with every report they can see; the dialog keeps the
    * context they were reading in place.
    */
+  /*
+   * The dialogs hold the whole assignment row, not just the barangay name: the row's
+   * work type decides whether the status-change actions are offered at all (the
+   * backend enforces the same rule, so hiding is a convenience, never the control).
+   */
   const [openBarangay, setOpenBarangay] = useState(null);
-  const showOutages = (barangayName) => setOpenBarangay(barangayName || null);
+  const [openMaintenance, setOpenMaintenance] = useState(null);
+  const showOutages = (assignment) => setOpenBarangay(assignment || null);
+  const showMaintenance = (assignment) => setOpenMaintenance(assignment || null);
 
   return (
     <>
@@ -66,19 +75,31 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
                 <p className="truncate text-sm font-bold text-navy-900 dark:text-white">
                   {assignment.barangayName || 'Unnamed barangay'}
                 </p>
-                <div className="mt-1.5">
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   <Badge tone="success" icon={ShieldCheck} size="sm">
                     Active Assignment
                   </Badge>
+                  <Badge tone="info" size="sm">
+                    {workTypeLabel(assignment.workType)}
+                  </Badge>
                 </div>
-                <div className="mt-3">
+                <div className="mt-3 flex flex-wrap gap-2">
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => showOutages(assignment.barangayName)}
+                    onClick={() => showOutages(assignment)}
                     aria-label={`View outage reports for ${assignment.barangayName}`}
                   >
                     View outages
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    icon={Wrench}
+                    onClick={() => showMaintenance(assignment)}
+                    aria-label={`View maintenance schedules for ${assignment.barangayName}`}
+                  >
+                    View maintenance
                   </Button>
                 </div>
               </div>
@@ -108,6 +129,9 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
                       <Badge tone="success" icon={ShieldCheck}>
                         Active Assignment
                       </Badge>
+                      <Badge tone="info" className="ml-1">
+                        {workTypeLabel(assignment.workType)}
+                      </Badge>
                     </TD>
                     <TD align="right">
                       {/*
@@ -116,14 +140,24 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
                         caller's active assignments server-side - so it can never reveal
                         an unassigned barangay.
                       */}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => showOutages(assignment.barangayName)}
-                        aria-label={`View outage reports for ${assignment.barangayName}`}
-                      >
-                        View outages
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => showOutages(assignment)}
+                          aria-label={`View outage reports for ${assignment.barangayName}`}
+                        >
+                          View outages
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => showMaintenance(assignment)}
+                          aria-label={`View maintenance schedules for ${assignment.barangayName}`}
+                        >
+                          View maintenance
+                        </Button>
+                      </div>
                     </TD>
                   </TR>
                 ))}
@@ -145,6 +179,11 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
                 barangays. Reports outside them are not returned to you by the API at all.
               </li>
               <li>
+                Maintenance schedules shown here are read-only for every account, except
+                that an assignment for maintenance work (or both) can move the status of a
+                schedule - planning them is still an electric company and admin action.
+              </li>
+              <li>
                 If an assignment is deactivated, you lose access to that barangay immediately
                 - no sign-out needed.
               </li>
@@ -163,8 +202,16 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
 
       <BarangayOutagesModal
         open={Boolean(openBarangay)}
-        barangayName={openBarangay}
+        barangayName={openBarangay?.barangayName}
+        canChangeStatus={openBarangay?.workType !== 'maintenance'}
         onClose={() => setOpenBarangay(null)}
+      />
+
+      <BarangayMaintenanceModal
+        open={Boolean(openMaintenance)}
+        barangayName={openMaintenance?.barangayName}
+        canChangeStatus={openMaintenance?.workType !== 'outage'}
+        onClose={() => setOpenMaintenance(null)}
       />
     </>
   );

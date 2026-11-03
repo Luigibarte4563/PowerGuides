@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ZoomControl } from 'react-leaflet';
-import { CalendarClock, CheckCircle2, Pencil, Plus, Trash2, Wrench } from 'lucide-react';
+import { CalendarClock, CheckCircle2, Pencil, Plus, Trash2, UserCheck, Wrench } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
@@ -11,7 +11,9 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import AppMap, { FitPoints, MapCircle, MapLegend, MapPoints, PIN_COLORS } from '@/components/Map';
 import MapWorkspace, { FeedActions, FeedToggle } from '@/components/MapWorkspace';
 import { useAuth } from '@/context/AuthContext';
+import { useReference } from '@/context/ReferenceContext';
 import { useToast } from '@/context/ToastContext';
+import { useInvalidateAssignments } from '@/hooks/useLinemanAssignments';
 import { maintenanceApi, UPCOMING_STATUSES } from '@/api';
 import { COMPANY_PAGE_SIZE, COMPANY_QUERY_KEYS, statusTone } from '@/utils/constants';
 import { readMaintenance } from '@/utils/records';
@@ -19,6 +21,7 @@ import { formatDate, formatDistance, formatTime, humanize } from '@/utils/format
 import { toUserMessage } from '@/utils/errorMessage';
 import Pagination from '@/components/Pagination';
 import MaintenanceFormModal from './components/MaintenanceFormModal';
+import AssignmentFormModal from './components/AssignmentFormModal';
 
 /**
  * Module MNT - maintenance management.
@@ -36,14 +39,17 @@ import MaintenanceFormModal from './components/MaintenanceFormModal';
  */
 export default function Maintenance() {
   const { isManager } = useAuth();
+  const { barangays } = useReference();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const invalidateAssignments = useInvalidateAssignments();
 
   const [tab, setTab] = useState('upcoming');
   const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [assigning, setAssigning] = useState(null);
   const [mapStatus, setMapStatus] = useState('');
 
   const listQuery = useQuery({
@@ -102,6 +108,29 @@ export default function Maintenance() {
 
   const pageCount = Math.max(1, Math.ceil(rows.length / COMPANY_PAGE_SIZE));
   const pageRows = rows.slice((page - 1) * COMPANY_PAGE_SIZE, page * COMPANY_PAGE_SIZE);
+
+  /*
+   * "Assign" on a schedule card opens the assignment form. A schedule can cover several
+   * barangays, so the form is prefilled only when exactly ONE barangay is covered and its
+   * name matches the reference table - assignments need the numeric barangay id while
+   * schedules carry names. Anything else opens the form for a manual pick.
+   */
+  const barangayIdByName = useMemo(() => {
+    const map = new Map();
+    (barangays || []).forEach((option) => {
+      if (option?.name) map.set(String(option.name).trim().toLowerCase(), option.rowId);
+    });
+    return map;
+  }, [barangays]);
+
+  const openAssign = (item) => {
+    const names = String(item.barangay || '')
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean);
+    const rowId = names.length === 1 ? barangayIdByName.get(names[0].toLowerCase()) : null;
+    setAssigning({ item, prefillBarangayId: rowId ?? '' });
+  };
 
   // Each schedule expands into one point per affected barangay so a multi-barangay
   // schedule is drawn in full rather than only at its first location.
@@ -328,6 +357,14 @@ export default function Maintenance() {
                       <Button
                         size="sm"
                         variant="outline"
+                        icon={UserCheck}
+                        onClick={() => openAssign(item)}
+                      >
+                        Assign
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         icon={Pencil}
                         onClick={() => {
                           setEditing(item);
@@ -376,6 +413,14 @@ export default function Maintenance() {
           setFormOpen(false);
           setEditing(null);
         }}
+      />
+
+      <AssignmentFormModal
+        open={Boolean(assigning)}
+        assignment={null}
+        initialBarangayId={assigning?.prefillBarangayId}
+        onClose={() => setAssigning(null)}
+        onSaved={invalidateAssignments}
       />
 
       <ConfirmDialog

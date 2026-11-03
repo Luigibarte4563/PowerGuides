@@ -10,17 +10,25 @@ import {
   linemanAssignmentsApi,
   ACTIVE_ASSIGNMENT_STATUS,
   INACTIVE_ASSIGNMENT_STATUS,
+  ASSIGNMENT_WORK_TYPES,
+  WORK_TYPE_LABELS,
 } from '@/api';
 import { useLinemenList } from '@/hooks/useLinemanAssignments';
 import { toFieldErrors, toUserMessage } from '@/utils/errorMessage';
 import { clearFieldError, collectErrors, hasErrors, validateRequired } from '@/utils/validators';
 
-const FIELD_ORDER = ['linemanId', 'barangayId', 'status'];
+const FIELD_ORDER = ['linemanId', 'barangayId', 'status', 'workType'];
+
+const WORK_TYPE_OPTIONS = ASSIGNMENT_WORK_TYPES.map((value) => ({
+  value,
+  label: WORK_TYPE_LABELS[value],
+}));
 
 const EMPTY = {
   linemanId: '',
   barangayId: '',
   status: ACTIVE_ASSIGNMENT_STATUS,
+  workType: 'both',
 };
 
 function toFormValues(assignment) {
@@ -29,6 +37,7 @@ function toFormValues(assignment) {
     linemanId: String(assignment.linemanId ?? ''),
     barangayId: String(assignment.barangayId ?? ''),
     status: assignment.status || ACTIVE_ASSIGNMENT_STATUS,
+    workType: assignment.workType || 'both',
   };
 }
 
@@ -47,7 +56,7 @@ function toFormValues(assignment) {
  * (see ReferenceContext), so the option value is the NAME while `rowId` carries the id
  * that `barangay_id` actually wants. Sending the name would be rejected with 400.
  */
-export default function AssignmentFormModal({ open, assignment, onClose, onSaved }) {
+export default function AssignmentFormModal({ open, assignment, onClose, onSaved, initialBarangayId }) {
   const { barangays, isLoading: refLoading } = useReference();
   const linemenQuery = useLinemenList({ enabled: open });
   const toast = useToast();
@@ -58,9 +67,15 @@ export default function AssignmentFormModal({ open, assignment, onClose, onSaved
 
   useEffect(() => {
     if (!open) return;
-    setValues(toFormValues(assignment));
+    // `initialBarangayId` prefills CREATE mode only (entry points on the Outages and
+    // Maintenance screens); edit mode always starts from the record itself.
+    setValues(
+      assignment
+        ? toFormValues(assignment)
+        : { ...EMPTY, barangayId: initialBarangayId ? String(initialBarangayId) : EMPTY.barangayId }
+    );
     setErrors({});
-  }, [open, assignment]);
+  }, [open, assignment, initialBarangayId]);
 
   const set = (field) => (event) => {
     const { value } = event.target;
@@ -100,6 +115,7 @@ export default function AssignmentFormModal({ open, assignment, onClose, onSaved
         linemanId: () => validateRequired(values.linemanId, 'A lineman'),
         barangayId: () => validateRequired(values.barangayId, 'A barangay'),
         status: () => validateRequired(values.status, 'A status'),
+        workType: () => validateRequired(values.workType, 'A work type'),
       }),
     [values]
   );
@@ -124,6 +140,7 @@ export default function AssignmentFormModal({ open, assignment, onClose, onSaved
     const payload = {
       linemanId: Number(values.linemanId),
       barangayId: Number(values.barangayId),
+      workType: values.workType,
     };
 
     if (isEdit) {
@@ -136,6 +153,9 @@ export default function AssignmentFormModal({ open, assignment, onClose, onSaved
       }
       if (values.status !== assignment.status) {
         payload.status = values.status;
+      }
+      if (values.workType !== (assignment.workType || 'both')) {
+        payload.workType = values.workType;
       }
       // Nothing changed at all - nothing to ask the server to do.
       if (Object.keys(payload).length === 0) {
@@ -197,6 +217,17 @@ export default function AssignmentFormModal({ open, assignment, onClose, onSaved
           onChange={set('barangayId')}
           error={errors.barangayId}
           hint={selectedBarangay ? `Current: ${selectedBarangay.name}` : undefined}
+        />
+
+        <Select
+          label="Work type"
+          required
+          options={WORK_TYPE_OPTIONS}
+          disabled={mutation.isPending}
+          value={values.workType}
+          onChange={set('workType')}
+          error={errors.workType}
+          hint="What this assignment is for. It does not change the barangay access the assignment grants."
         />
 
         {isEdit ? (

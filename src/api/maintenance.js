@@ -89,16 +89,18 @@ export const maintenanceApi = {
   },
 
   /**
-   * Manager only.
-   *
-   * A PARTIAL update - `maintenanceApi.setStatus(id, status)` is the common case and
-   * sends nothing but the id and the new status.
+   * Managers can re-plan a schedule; a lineman may send a STATUS-ONLY update
+   * (`setStatus`) for a schedule their maintenance assignment covers.
    */
   async update(data, { signal } = {}) {
     return apiRequest('/api/maintenance/update.php', { method: 'POST', body: data, signal });
   },
 
-  /** Move a schedule's status on its own (FR-MNT-3). No other field is touched. */
+  /**
+   * Status on its own (FR-MNT-3). Managers only for re-planning, but the backend also
+   * admits a lineman for this exact shape: status-only, on a schedule their active
+   * maintenance assignment covers.
+   */
   async setStatus(maintenanceId, status, { signal } = {}) {
     return apiRequest('/api/maintenance/update.php', {
       method: 'POST',

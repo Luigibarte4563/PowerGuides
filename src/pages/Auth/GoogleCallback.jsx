@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Building2, LayoutDashboard, Loader2, TriangleAlert } from 'lucide-react';
+import { Building2, LayoutDashboard, Loader2, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import { authApi, setStoredToken } from '@/api';
@@ -10,6 +10,7 @@ import { takeOauthReturnTo } from '@/utils/oauthHandoff';
 import { GOOGLE_ERRORS } from './googleErrors';
 
 const APP_CHOICES = [
+  { root: '/admin', label: 'Admin dashboard', icon: ShieldCheck, hint: 'Users, roles and platform analytics' },
   { root: '/company', label: 'Company dashboard', icon: Building2, hint: 'Outage reports, maintenance and broadcasts' },
   { root: '/dashboard', label: 'Resident app', icon: LayoutDashboard, hint: 'Report and track incidents near you' },
 ];
@@ -91,7 +92,7 @@ export default function GoogleCallback() {
             <p className="mt-2 text-sm text-navy-600">
               You are signed in as{' '}
               <span className="font-semibold text-navy-900">{roleLabel(pendingRole)}</span>. Your
-              account can use both apps - pick one to continue.
+              account can use multiple apps - pick one to continue.
             </p>
 
             <div className="mt-5 grid gap-2">

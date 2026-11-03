@@ -37,7 +37,7 @@ import { toUserMessage } from '@/utils/errorMessage';
  * change a report outside the lineman's barangays, even though it was reached from a list
  * that was already scoped.
  */
-export default function BarangayOutagesModal({ open, barangayName, onClose }) {
+export default function BarangayOutagesModal({ open, barangayName, onClose, canChangeStatus = true }) {
   const toast = useToast();
   const queryClient = useQueryClient();
   const [statusTarget, setStatusTarget] = useState(null);
@@ -108,17 +108,19 @@ export default function BarangayOutagesModal({ open, barangayName, onClose }) {
               Reported {formatDateTime(report.created_at)}
               {report.affected_houses ? ` - ${formatNumber(report.affected_houses)} houses affected` : ''}
             </p>
-            <div className="mt-3">
-              <Button
-                size="sm"
-                variant="outline"
-                icon={ArrowUpDown}
-                onClick={() => setStatusTarget(report)}
-                aria-label={`Change status for ${report.location_name}`}
-              >
-                Change status
-              </Button>
-            </div>
+            {canChangeStatus ? (
+              <div className="mt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon={ArrowUpDown}
+                  onClick={() => setStatusTarget(report)}
+                  aria-label={`Change status for ${report.location_name}`}
+                >
+                  Change status
+                </Button>
+              </div>
+            ) : null}
           </div>
         )}
         renderTable={(visible) => (
@@ -164,15 +166,17 @@ export default function BarangayOutagesModal({ open, barangayName, onClose }) {
                       {formatDateTime(report.created_at)}
                     </TD>
                     <TD align="right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        icon={ArrowUpDown}
-                        onClick={() => setStatusTarget(report)}
-                        aria-label={`Change status for ${report.location_name}`}
-                      >
-                        Change
-                      </Button>
+                      {canChangeStatus ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          icon={ArrowUpDown}
+                          onClick={() => setStatusTarget(report)}
+                          aria-label={`Change status for ${report.location_name}`}
+                        >
+                          Change
+                        </Button>
+                      ) : null}
                     </TD>
                   </TR>
                 ))}
@@ -195,7 +199,7 @@ export default function BarangayOutagesModal({ open, barangayName, onClose }) {
       ) : null}
 
       <StatusChangeDialog
-        open={Boolean(statusTarget)}
+        open={canChangeStatus && Boolean(statusTarget)}
         reportLabel={statusTarget?.location_name}
         currentStatus={statusTarget?.status}
         onClose={() => setStatusTarget(null)}

@@ -95,16 +95,19 @@ export function roleLabel(role, referenceRoles = []) {
 /**
  * The app roots this role may land on.
  *
- * Staff legitimately use both apps - the company profile even links into the resident one
- * - so their landing page is a choice rather than a fixed destination. Residents have only
- * the resident app.
+ * Admins own `/admin` but the backend also grants them every staff endpoint, so all
+ * three apps stay reachable. Other staff legitimately use both apps - the company
+ * profile even links into the resident one - so their landing page is a choice rather
+ * than a fixed destination. Residents have only the resident app.
  */
 export function appRootsFor(role) {
+  if (hasRole(role, ADMIN_ROLES)) return ['/admin', '/company', '/dashboard'];
   return isCompanyUser(role) ? ['/company', '/dashboard'] : ['/dashboard'];
 }
 
 /** Where this role belongs by default when nothing specific was requested. */
 export function defaultRootFor(role) {
+  if (hasRole(role, ADMIN_ROLES)) return '/admin';
   return isCompanyUser(role) ? '/company' : '/dashboard';
 }
 

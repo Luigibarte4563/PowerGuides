@@ -4,15 +4,18 @@ React front end for **PowerGuide Dagupan**, a crowdsourced platform where Dagupa
 track power outages, floods and electrical hazards, see scheduled maintenance, find nearby power
 stations and get notified about risks near their location.
 
-This repository holds **two apps in one codebase**:
+This repository holds **three apps in one codebase**:
 
 - **`/dashboard`** — the resident app, available to every signed-in user.
 - **`/company`** — the staff app for `lineman`, `electric_company` and `admin`. Linemen verify
   reports and post field updates for the barangays they are assigned to; electric company and
   admin also manage maintenance, broadcast notifications and assign linemen.
+- **`/admin`** — the admin app for `admin` only: platform-wide stats and the user directory
+  with role management (`admin/users.php`, `admin/update_role.php`, `admin/create_user.php`).
 
-Role management itself is **not** built — the API has no endpoint for it, so roles are granted by
-writing `users.role_id` in the database.
+Each role has its own home URL after sign-in: residents and linemen land on `/dashboard`,
+electric-company staff on `/company`, and admin on `/admin`. An admin can still open
+`/company` and `/dashboard` — the backend grants the admin role every staff permission.
 
 ---
 
@@ -134,6 +137,7 @@ frontend/                     # project root (this folder)
     ├── api/                  # the ONLY place that talks to the backend
     │   ├── client.js         # fetch wrapper, ApiError, upload with progress, response helpers
     │   ├── auth.js           # register / login / logout / google / me
+    │   ├── admin.js          # admin-only: user directory, role changes, create user, stats
     │   ├── reference.js      # reference data
     │   ├── outages.js        # resident outage reports
     │   ├── companyOutages.js # staff outage list / verify / field update / bulk status
@@ -172,11 +176,13 @@ frontend/                     # project root (this folder)
     │   ├── useCountdown.js
     │   ├── useDebouncedValue.js
     │   ├── useCompanyOutages.js    # company summary counts + staff outage list
-    │   └── useLinemanAssignments.js # assignments, lineman picker, my.php
+    │   ├── useLinemanAssignments.js # assignments, lineman picker, my.php
+    │   └── useAdmin.js       # admin stats + user directory queries
     ├── layouts/
     │   ├── PublicLayout.jsx  # header, anchor nav, mobile menu, footer
     │   ├── DashboardLayout.jsx  # resident app chrome (role-filtered nav)
     │   ├── CompanyLayout.jsx    # /company app chrome
+    │   ├── AdminLayout.jsx      # /admin app chrome
     │   ├── Sidebar.jsx       # grouped nav, drawer on mobile
     │   └── Topbar.jsx        # page title, notification bell, user menu
     ├── pages/
@@ -189,11 +195,13 @@ frontend/                     # project root (this folder)
     │   ├── Company/          # Overview, Outages, OutageDetail, Assignments, Maintenance,
     │   │                     # MapRisk, PowerStations, Notifications, Hazards, Profile
     │   │   └── components/   # per-module form modals / dialogs
+    │   ├── Admin/            # Overview (platform stats), Users (directory + role management)
     │   └── NotFound.jsx
     ├── routes/
     │   ├── index.jsx         # route map
     │   ├── navItems.js       # resident nav (items may be limited to certain roles)
     │   ├── companyNavItems.js # company nav
+    │   ├── adminNavItems.js  # admin nav
     │   ├── ProtectedRoute.jsx # requires a session
     │   ├── PublicOnlyRoute.jsx
     │   └── RequireRole.jsx   # requires a staff/company role (wraps /company)
@@ -213,7 +221,7 @@ frontend/                     # project root (this folder)
 | `/` | Public | Landing page |
 | `/login` | Public | Login (email + Google) |
 | `/register` | Public | Register (email + Google) |
-| `/auth/google-callback` | Public | OAuth landing: stores the JWT, then redirects to `/dashboard` |
+| `/auth/google-callback` | Public | OAuth landing: stores the JWT, then redirects to the account's home (`/dashboard`, `/company` or `/admin`) |
 | `/dashboard` | Protected | Overview with summary cards and quick actions |
 | `/dashboard/assignments` | Lineman | My Assigned Barangays, from `lineman_assignment/my.php` |
 | `/dashboard/outages` | Protected | Outage reports: All / Active / Resolved / My Reports |
@@ -249,6 +257,17 @@ lands on the access-denied page rather than inside a dashboard they cannot use. 
 | `/company/hazards` | Staff | Hazard review and status updates |
 | `/company/profile` | Staff | Account info + role capabilities |
 
+### Admin dashboard (`/admin`)
+
+Admin only — `RequireRole` here uses the single-entry `ADMIN_ROLES` allow-list, so any other
+account (including staff) gets the access-denied page. This is an admin's home URL after
+sign-in.
+
+| Route | Access | Page |
+| ----- | ------ | ---- |
+| `/admin` | Admin | Platform overview: user totals by role, 30-day report trend, top barangays |
+| `/admin/users` | Admin | User directory: search accounts, change roles, create users |
+
 ### Roles
 
 `useAuth().role` (from `me.php`) drives everything here, via the allow-lists in
@@ -260,12 +279,13 @@ a near-miss like `electric-company` instead of `electric_company` silently becom
 | `user` | `/dashboard` only |
 | `lineman` | both apps; outage access limited to assigned barangays |
 | `electric_company` | both apps; all company writes, assignment management |
-| `admin` | everything |
+| `admin` | owns `/admin` (stats, user & role management) and lands there; can also use `/company` and `/dashboard` |
 
 Hiding UI is a convenience, never a control — the API re-checks every permission.
 
 Unauthenticated visitors are redirected to `/login` (with the original destination remembered), and
-signed-in visitors are redirected away from `/login` and `/register`.
+signed-in visitors who open `/login` or `/register` see an "already signed in" card where they can
+continue to their own app or sign out to use a different account.
 
 ### Google sign-in
 
@@ -274,8 +294,9 @@ signed-in visitors are redirected away from `/login` and `/register`.
 on failure. This app handles both:
 
 - `/auth/google-callback` (`src/pages/Auth/GoogleCallback.jsx`) stores the token, restores the session
-  through `me.php`, and replaces the URL with `/dashboard`. A missing token or a failed session shows a
-  friendly message with a link back to login instead of a blank screen.
+  through `me.php`, and redirects to the account's home (`/dashboard`, `/company` or `/admin`). Staff and
+  admin get an app chooser when no specific destination was requested. A missing token or a failed session
+  shows a friendly message with a link back to login instead of a blank screen.
 - `/login` maps the `error` codes (`google_auth_denied`, `google_exchange_failed`,
   `google_invalid_token`, ...) to plain-English copy in `src/pages/Auth/googleErrors.js`; raw codes are
   never shown.
@@ -285,11 +306,12 @@ Because the redirect target is decided by the backend, `FRONTEND_URL` in
 `http://localhost:5174`, because port 5173 is taken by another project). If Google sign-in lands on a
 blank page or the wrong app, check that value first.
 
-## 5. API coverage (69 endpoints)
+## 5. API coverage (73 endpoints)
 
 | Feature | Endpoint(s) |
 | ------- | ----------- |
 | Auth | `register.php`, `login.php`, `logout.php`, `google.php`, `me.php` |
+| Admin | `admin/users.php`, `admin/update_role.php`, `admin/create_user.php`, `admin/stats.php` |
 | Reference | `reference/get.php` |
 | Outages (resident) | `create`, `get`, `get_active`, `get_resolve`, `get_my_report`, `get_detail`, `update` (owner), `delete` (owner), `upload_image` |
 | Outages (staff) | `outage/get`, `outage/verify`, `outage/add_update` |
@@ -437,6 +459,21 @@ deactivated assignment revokes access on the lineman's very next request.
 
 Two things worth knowing when working on this module:
 
+- **Each assignment carries a work type** — `outage`, `maintenance` or `both`
+  (`lineman_assignments.work_type`, migration `004`), and it **gates what the lineman
+  can do**: outage endpoints accept only `outage`/`both` assignments
+  (`auth/lineman_access.php`), and maintenance **status** updates accept only
+  `maintenance`/`both` assignments (status-only — re-planning a schedule stays
+  manager-only, and lineman status changes do not re-send resident notifications).
+  A `both` assignment grants both; rows created before migration 004 default to `both`.
+- **A lineman sees both sides of their barangay.** "View outages" opens the scoped
+  outage reports; "View maintenance" lists the schedules covering that barangay
+  (read-only, from the same `maintenance/get.php` every account reads - maintenance has
+  no per-assignment scoping in the backend).
+- **Assignments can be created from the Outages and Maintenance screens too.** The "Assign"
+  action on an outage report (or a maintenance schedule) opens the assignment form with the
+  barangay prefilled; multi-barangay schedules open it for a manual pick. Managers only.
+
 - **`my.php` has no id parameter on purpose.** The lineman comes from the JWT, so the question
   "show me someone else's assignments" cannot even be asked. Don't add a parameter.
 - **The outage list is already scoped, so the "My assigned barangays" dropdown is only a
@@ -449,6 +486,7 @@ Two things worth knowing when working on this module:
   ([`CrowdsourcedAPI`](https://github.com/Luigibarte4563/CrowdsourcedAPI)), cloned to
   `C:\xampp\htdocs\CrowdsourcedAPI`. That repo also owns `config/cors.php` and both `.env`
   files. See [`SETUP.md`](SETUP.md)
-- Role management — there is no endpoint for it, so roles are changed in the database
+- Role definitions — `/admin/users` grants and changes **existing** roles, but the `roles`
+  table itself is fixed; there is no endpoint to create a new role
 - Any audience/broadcast targeting: `notification/create.php` takes explicit `user_id`s, so
   "notify a whole barangay" has to be resolved to ids client-side

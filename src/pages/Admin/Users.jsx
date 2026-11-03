@@ -88,11 +88,16 @@ export default function Users() {
    * Role options for the picker: the reference table's rows when loaded, plus every
    * role actually present in the directory (so the picker works even before
    * reference/get.php has answered). Keyed by id, because update_role.php takes ids.
+   * normaliseOptions puts the numeric DB id in `rowId` and the role name in `name`
+   * (`id` holds the name), so the reference side must read those - reading
+   * `role_name` finds nothing and silently drops roles with no account yet,
+   * e.g. lineman before the first lineman is created.
    */
   const roleOptions = useMemo(() => {
     const map = new Map();
     (referenceRoles || []).forEach((r) => {
-      if (r?.id !== undefined && r?.role_name) map.set(Number(r.id), r.role_name);
+      const numericId = Number(r?.rowId);
+      if (numericId && r?.name) map.set(numericId, r.name);
     });
     rows.forEach((row) => {
       if (row.roleId && row.role) map.set(row.roleId, row.role);
