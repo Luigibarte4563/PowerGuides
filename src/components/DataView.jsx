@@ -25,6 +25,7 @@ export default function DataView({
   renderTable,
   emptyAction,
   skeleton,
+  dense = false,
 }) {
   if (isLoading) return skeleton || <LoadingState label={loadingLabel} />;
   if (error) return <ErrorState message={toUserMessage(error)} onRetry={onRetry} />;
@@ -48,7 +49,7 @@ export default function DataView({
       {renderCard ? (
         // Cards collapse under the table only when a table view exists; with cards
         // alone they are the ONLY view, so they must render on every screen size.
-        <div className={clsx('space-y-3', renderTable && 'md:hidden')}>
+        <div className={clsx(dense ? 'space-y-2' : 'space-y-3', renderTable && 'md:hidden')}>
           {items.map((item, index) => (
             <Fragment key={item?.id ?? index}>{renderCard(item, index)}</Fragment>
           ))}

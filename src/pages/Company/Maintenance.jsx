@@ -319,6 +319,7 @@ export default function Maintenance() {
       >
         <div className="space-y-3">
           <DataView
+            dense
             isLoading={tab === 'completed' ? completeQuery.isLoading : listQuery.isLoading}
             error={tab === 'completed' ? completeQuery.isError : listQuery.isError}
             onRetry={() =>
@@ -338,6 +339,7 @@ export default function Maintenance() {
             }}
             renderCard={(item) => (
               <RecordCard
+                variant="feed"
                 icon={Wrench}
                 iconTone={item.status === 'ongoing' ? 'warning' : 'primary'}
                 title={item.title}
@@ -355,7 +357,7 @@ export default function Maintenance() {
                   isManager ? (
                     <>
                       <Button
-                        size="sm"
+                        size="xs"
                         variant="outline"
                         icon={UserCheck}
                         onClick={() => openAssign(item)}
@@ -363,7 +365,7 @@ export default function Maintenance() {
                         Assign
                       </Button>
                       <Button
-                        size="sm"
+                        size="xs"
                         variant="outline"
                         icon={Pencil}
                         onClick={() => {
@@ -374,7 +376,7 @@ export default function Maintenance() {
                         Edit
                       </Button>
                       <Button
-                        size="sm"
+                        size="xs"
                         variant="ghost"
                         icon={Trash2}
                         className="text-danger-600"

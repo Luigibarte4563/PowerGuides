@@ -28,13 +28,19 @@ export default function Badge({
     <span
       title={title}
       className={clsx(
-        'inline-flex items-center gap-1 rounded-full font-extrabold uppercase tracking-[0.08em] ring-1 ring-inset',
-        size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs',
+        'inline-flex items-center gap-1 rounded-full font-extrabold uppercase ring-1 ring-inset',
+        size === 'xs'
+          ? 'px-1.5 py-0.5 text-[8px] tracking-[0.12em]'
+          : size === 'sm'
+            ? 'px-2 py-0.5 text-[11px] tracking-[0.08em]'
+            : 'px-2.5 py-1 text-xs tracking-[0.08em]',
         TONES[tone] || TONES.neutral,
         className
       )}
     >
-      {Icon ? <Icon className={size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5'} aria-hidden="true" /> : null}
+      {Icon ? (
+        <Icon className={size === 'xs' ? 'h-2.5 w-2.5' : size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5'} aria-hidden="true" />
+      ) : null}
       {children}
     </span>
   );

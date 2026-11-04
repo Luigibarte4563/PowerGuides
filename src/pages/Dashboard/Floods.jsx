@@ -40,7 +40,6 @@ const LEVEL_LEGEND = [
   { label: 'Low', tone: 'success' },
   { label: 'Moderate', tone: 'warning' },
   { label: 'High / severe', tone: 'danger' },
-  { label: 'Not rated', tone: 'neutral' },
 ];
 
 export default function Floods() {
@@ -266,8 +265,9 @@ export default function Floods() {
         mapEmptyLabel="No mapped flood reports yet"
       >
         <DataView
-        isLoading={activeQuery.isLoading}
-        error={activeQuery.isError}
+          dense
+          isLoading={activeQuery.isLoading}
+          error={activeQuery.isError}
         errorMessage={toUserMessage(activeQuery.error)}
         onRetry={() => activeQuery.refetch()}
         loadingLabel="Loading flood reports…"
@@ -293,6 +293,7 @@ export default function Floods() {
         }}
         renderCard={(flood) => (
           <RecordCard
+            variant="feed"
             icon={Waves}
             iconTone="info"
             title={flood.locationName || flood.barangay || 'Flood report'}

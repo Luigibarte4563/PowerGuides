@@ -78,7 +78,10 @@ export default function Location() {
   };
 
   return (
-    <div className="space-y-6">
+    <div
+      data-theme="dark"
+      className="min-h-full space-y-6 bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
       <PageHeader
         title="My Location"
         description="This location powers nearby power stations, floods, hazards and risk areas."
@@ -142,7 +145,7 @@ export default function Location() {
                 </div>
 
                 {geo.error ? (
-                  <p className="text-xs font-medium text-warning-700" role="status">
+                  <p className="text-xs font-medium text-[#FFBB02]" role="status">
                     {geo.error}
                   </p>
                 ) : null}
@@ -171,7 +174,7 @@ export default function Location() {
                 <LoadingState label="Loading…" />
               ) : location ? (
                 <>
-                  <div className="h-64 w-full overflow-hidden rounded-card border border-navy-200">
+                  <div className="h-64 w-full overflow-hidden rounded-xl border border-white/10">
                     <AppMap center={{ lat: location.lat, lng: location.lng }} zoom={15} className="h-full w-full">
                       <MapPinMarker position={{ lat: location.lat, lng: location.lng }} tone="success">
                         <p className="font-bold text-navy-900">
@@ -196,7 +199,7 @@ export default function Location() {
                   </dl>
                 </>
               ) : (
-                <p className="rounded-card border border-dashed border-navy-200 bg-canvas p-6 text-center text-sm text-navy-500">
+                <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/40">
                   No location saved yet. Enter your address on the left and press Save.
                 </p>
               )}
@@ -206,7 +209,7 @@ export default function Location() {
           <Card>
             <CardHeader>Why we need your location</CardHeader>
             <CardBody>
-              <ul className="space-y-2 text-sm text-navy-600">
+              <ul className="space-y-2 text-sm text-white/60">
                 {[
                   'Find the closest available power stations.',
                   'See active floods within a chosen radius.',
@@ -214,7 +217,7 @@ export default function Location() {
                   'Centre the risk-area map and the outage heatmap.',
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2">
-                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success-600" aria-hidden="true" />
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#34FB34]" aria-hidden="true" />
                     {item}
                   </li>
                 ))}
@@ -234,11 +237,11 @@ export default function Location() {
 function Row({ icon: Icon, label, value }) {
   return (
     <div className="flex items-start justify-between gap-3">
-      <dt className="flex shrink-0 items-center gap-2 text-navy-500">
-        <Icon className="h-4 w-4 text-navy-400" aria-hidden="true" />
+      <dt className="flex shrink-0 items-center gap-2 text-white/40">
+        <Icon className="h-4 w-4 text-white/35" aria-hidden="true" />
         {label}
       </dt>
-      <dd className="truncate text-right font-semibold text-navy-800">{value}</dd>
+      <dd className="truncate text-right font-semibold text-white/70">{value}</dd>
     </div>
   );
 }

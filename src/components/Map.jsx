@@ -3,6 +3,10 @@ import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-le
 import L from 'leaflet';
 import clsx from 'clsx';
 import { DEFAULT_CENTER } from '@/utils/formatters';
+
+// leaflet.heat registers against the bare global L, which bundler-ESM leaflet
+// does not set — bridge it once at module scope, before any dynamic import runs.
+window.L = window.L?.heatLayer ? window.L : L;
 /**
  * Basemap providers, tried in order. Both need no API key.
  *
@@ -85,6 +89,8 @@ const PIN_PATH =
   `C27.5 26 16 ${PIN_TIP_Y} 16 ${PIN_TIP_Y}Z`;
 const PIN_HEAD = { cx: 16, cy: 14.5, r: 4.5 };
 const PIN_WIDTH = 30;
+/** Diameter of the round record pin (MapPoints) — 2x the Outages CircleMarker radius. */
+const PIN_DOT_WIDTH = 18;
 
 const escapeHtml = (value) =>
   String(value).replace(/[&<>"']/g, (character) => {
@@ -131,6 +137,38 @@ export function pinIcon(tone = 'primary', glyph = '', options = {}) {
     iconSize: [width, height],
     iconAnchor: [width / 2, tipOffset],
     popupAnchor: [0, -tipOffset + 6],
+  });
+}
+
+/**
+ * The record pin used by every map: a white-ringed circle, matching the Outages
+ * map's `CircleMarker` look (white 2px ring, tone-coloured fill at 0.88). An
+ * optional glyph letter renders centred in white for the staff maps.
+ * `size` is the circle DIAMETER in pixels.
+ */
+export function circlePinSvg(tone = 'primary', glyph = '', size = PIN_DOT_WIDTH) {
+  const color = PIN_COLORS[tone] || tone || PIN_COLORS.primary;
+  const centre = glyph
+    ? `<text x="9" y="9" text-anchor="middle" dominant-baseline="central" font-size="${Math.max(9, Math.round(size * 0.42))}" font-weight="700" fill="#ffffff">${escapeHtml(glyph)}</text>`
+    : '';
+  return (
+    `<svg viewBox="0 0 18 18" width="100%" height="100%" aria-hidden="true" focusable="false">` +
+    `<circle cx="9" cy="9" r="7.5" fill="${color}" fill-opacity="0.88" stroke="#ffffff" stroke-width="2" />` +
+    centre +
+    `</svg>`
+  );
+}
+
+export function circlePinIcon(tone = 'primary', glyph = '', options = {}) {
+  const { size = PIN_DOT_WIDTH, className = '' } = options;
+  const width = Math.max(12, Math.round(Number(size) || PIN_DOT_WIDTH));
+
+  return L.divIcon({
+    className: clsx('pg-pin', className),
+    html: circlePinSvg(tone, glyph, width),
+    iconSize: [width, width],
+    iconAnchor: [width / 2, width / 2],
+    popupAnchor: [0, -width / 2 + 4],
   });
 }
 
@@ -230,14 +268,14 @@ export function MapPin({ position, tone = 'primary', glyph = '', size, children 
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
   return (
-    <Marker position={[lat, lng]} icon={pinIcon(tone, glyph, { size })}>
+    <Marker position={[lat, lng]} icon={circlePinIcon(tone, glyph, { size })}>
       {children ? <Popup>{children}</Popup> : null}
     </Marker>
   );
 }
 
-/** Many records drawn as the custom pin (one marker each). */
-export function MapPoints({ items = [], toneFor, size = PIN_WIDTH, glyphFor, children }) {
+/** Many records drawn as the white-ringed circle pin (one marker each). */
+export function MapPoints({ items = [], toneFor, size = PIN_DOT_WIDTH, glyphFor, children }) {
   return (
     <>
       {items.map((item, index) => {
@@ -249,7 +287,7 @@ export function MapPoints({ items = [], toneFor, size = PIN_WIDTH, glyphFor, chi
           <Marker
             key={item.id ?? `${lat}-${lng}-${index}`}
             position={[lat, lng]}
-            icon={pinIcon(tone, glyphFor ? glyphFor(item) : '', { size })}
+            icon={circlePinIcon(tone, glyphFor ? glyphFor(item) : '', { size })}
           >
             {children ? <Popup>{children(item)}</Popup> : null}
           </Marker>
@@ -434,7 +472,8 @@ export const HEAT_LEGEND = [
  * out. 0.6 keeps colours close to solid while intensity still separates the stops.
  *
  * `leaflet.heat` is a UMD plugin that expects a global `L`, so it is imported
- * lazily with the global provided - a static import would throw at startup.
+ * lazily - a static import would execute before the global bridge below and throw.
+ * The bridge itself is set once at module scope.
  */
 export function HeatLayer({
   points = [],
@@ -459,15 +498,17 @@ export function HeatLayer({
     let layer = null;
     let cancelled = false;
 
-    if (typeof window !== 'undefined') {
-      window.L = L; // leaflet.heat reads the global L
-    }
-
-    import('leaflet.heat').then(() => {
-      if (cancelled || typeof L.heatLayer !== 'function') return;
-      layer = L.heatLayer(validPoints, { radius, blur, minOpacity, maxZoom, gradient });
-      layer.addTo(map);
-    });
+    import('leaflet.heat')
+      .then(() => {
+        if (cancelled) return;
+        if (typeof L.heatLayer !== 'function') {
+          console.error('Heat layer: leaflet.heat loaded but did not register on L');
+          return;
+        }
+        layer = L.heatLayer(validPoints, { radius, blur, minOpacity, maxZoom, gradient });
+        layer.addTo(map);
+      })
+      .catch((error) => console.error('Heat layer: failed to load leaflet.heat', error));
 
     return () => {
       cancelled = true;
@@ -511,13 +552,13 @@ export function MapLegend({ items = [], title, className, position = 'bottom' })
   );
 }
 
-/** Miniature of the map pin, so the legend reads as the same marker. */
+/** Miniature of the record pin, so the legend reads as the same white-ringed circle. */
 function PinSwatch({ color, className }) {
   return (
     <span
       className={clsx('block shrink-0', className)}
       aria-hidden="true"
-      dangerouslySetInnerHTML={{ __html: pinSvg(color) }}
+      dangerouslySetInnerHTML={{ __html: circlePinSvg(color) }}
     />
   );
 }

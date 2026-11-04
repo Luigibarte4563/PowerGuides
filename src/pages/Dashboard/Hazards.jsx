@@ -32,7 +32,6 @@ const SEVERITY_LEGEND = [
   { label: 'Moderate', tone: 'warning' },
   { label: 'High', tone: 'danger' },
   { label: 'Critical', tone: 'danger' },
-  { label: 'Not rated', tone: 'neutral' },
 ];
 
 /**
@@ -224,6 +223,7 @@ export default function Hazards() {
         mapEmptyLabel="No mapped hazards yet"
       >
       <DataView
+        dense
         isLoading={listQuery.isLoading}
         error={listQuery.isError}
         errorMessage={toUserMessage(listQuery.error)}
@@ -246,6 +246,7 @@ export default function Hazards() {
           const owned = isOwnedBy(hazard.raw, user);
           return (
             <RecordCard
+              variant="feed"
               icon={AlertTriangle}
               iconTone={hazard.severity ? severityTone(hazard.severity) : 'danger'}
               title={hazard.hazardType || 'Electrical hazard'}
@@ -263,7 +264,7 @@ export default function Hazards() {
               ].filter(Boolean)}
               actions={
                 owned ? (
-                  <Button size="sm" variant="outline" icon={RefreshCw} onClick={() => setStatusTarget(hazard)}>
+                  <Button size="xs" variant="outline" icon={RefreshCw} onClick={() => setStatusTarget(hazard)}>
                     Update status
                   </Button>
                 ) : null

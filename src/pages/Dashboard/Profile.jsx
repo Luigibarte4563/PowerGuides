@@ -46,7 +46,10 @@ export default function Profile() {
   };
 
   return (
-    <div className="space-y-6">
+    <div
+      data-theme="dark"
+      className="min-h-full space-y-6 bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
       <PageHeader title="Profile" description="Your account details and session." />
 
       {error ? <AuthAlert>{error}</AuthAlert> : null}
@@ -54,17 +57,17 @@ export default function Profile() {
       <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <Card>
           <CardBody className="flex flex-col items-center gap-4 text-center">
-            <span className="flex h-24 w-24 items-center justify-center rounded-full bg-navy-900 text-2xl font-extrabold text-primary-300">
+            <span className="flex h-24 w-24 items-center justify-center rounded-full border border-[#FFBB02]/40 bg-[#FFBB02]/15 text-2xl font-extrabold text-[#FFBB02]">
               {initials(user?.name)}
             </span>
             <div>
-              <h2 className="text-xl font-extrabold text-navy-900">{user?.name || 'Community member'}</h2>
-              <p className="mt-1 text-sm text-navy-500">{user?.email}</p>
+              <h2 className="text-xl font-extrabold text-white">{user?.name || 'Community member'}</h2>
+              <p className="mt-1 text-sm text-white/40">{user?.email}</p>
             </div>
             <Badge tone="primary" icon={ShieldCheck}>
               {humanize(user?.role, 'Community user')}
             </Badge>
-            <div className="w-full space-y-2 border-t border-navy-100 pt-4 text-left">
+            <div className="w-full space-y-2 border-t border-white/5 pt-4 text-left">
               <Row icon={Mail} label="Email" value={user?.email || '—'} />
               <Row icon={User} label="User ID" value={user?.id ?? '—'} />
               <Row icon={MapPin} label="Saved location" value={location ? 'Configured' : 'Not set yet'} />
@@ -90,7 +93,7 @@ export default function Profile() {
               Session
             </CardHeader>
             <CardBody className="space-y-4">
-              <p className="text-sm text-navy-600">
+              <p className="text-sm text-white/60">
                 Signing out clears your session on this device and returns you to the landing page. Your reports
                 and devices stay on your account.
               </p>
@@ -108,12 +111,12 @@ export default function Profile() {
           <Card>
             <CardHeader>Account data</CardHeader>
             <CardBody>
-              <p className="text-sm text-navy-600">
+              <p className="text-sm text-white/60">
                 This build is the normal-user app. Account and role management are handled elsewhere, so profile
                 details are read-only here.
               </p>
               {/* TODO(API-CONFIRM): once the exact `me.php` fields are confirmed, extra columns can be shown here without changing the API layer. */}
-              <p className="mt-3 text-xs text-navy-400">
+              <p className="mt-3 text-xs text-white/35">
                 Profile details come straight from <code className="font-mono">GET /api/auth/me.php</code>.
               </p>
             </CardBody>
@@ -127,20 +130,20 @@ export default function Profile() {
 function Row({ icon: Icon, label, value }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="flex items-center gap-2 text-sm text-navy-500">
-        <Icon className="h-4 w-4 text-navy-400" aria-hidden="true" />
+      <span className="flex items-center gap-2 text-sm text-white/40">
+        <Icon className="h-4 w-4 text-white/35" aria-hidden="true" />
         {label}
       </span>
-      <span className="truncate text-sm font-semibold text-navy-800">{value}</span>
+      <span className="truncate text-sm font-semibold text-white/70">{value}</span>
     </div>
   );
 }
 
 function Stat({ label, value }) {
   return (
-    <div className="rounded-card border border-navy-100 bg-canvas p-4">
-      <p className="text-sm text-navy-500">{label}</p>
-      <p className="mt-1 text-xl font-extrabold text-navy-900">{value}</p>
+    <div className="rounded-xl border border-white/5 bg-[#1C1D30]/40 px-3 py-2.5">
+      <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-white/40">{label}</p>
+      <p className="mt-0.5 truncate text-base font-black leading-none text-white">{value}</p>
     </div>
   );
 }

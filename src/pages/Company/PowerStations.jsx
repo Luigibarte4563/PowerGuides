@@ -177,7 +177,6 @@ export default function PowerStations() {
             { label: 'Available', tone: 'success' },
             { label: 'Busy', tone: 'warning' },
             { label: 'Offline', tone: 'danger' },
-            { label: 'Maintenance', tone: 'neutral' },
           ]}
         />
       </AppMap>
@@ -287,6 +286,7 @@ export default function PowerStations() {
       >
         <div className="space-y-3">
         <DataView
+          dense
           isLoading={activeQuery.isLoading}
           error={activeQuery.isError}
           onRetry={() => activeQuery.refetch()}
@@ -313,6 +313,7 @@ export default function PowerStations() {
           }}
           renderCard={(station) => (
             <RecordCard
+              variant="feed"
               icon={Plug}
               iconTone={availabilityTone(station.availability)}
               title={station.name}
@@ -415,7 +416,7 @@ function stationActions(station, user, setEditing, setFormOpen, setDeleting) {
   return (
     <>
       <Button
-        size="sm"
+        size="xs"
         variant="outline"
         icon={Pencil}
         onClick={() => {
@@ -426,7 +427,7 @@ function stationActions(station, user, setEditing, setFormOpen, setDeleting) {
         Edit
       </Button>
       <Button
-        size="sm"
+        size="xs"
         variant="ghost"
         icon={Trash2}
         className="text-danger-600"

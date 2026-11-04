@@ -8,7 +8,7 @@ import clsx from 'clsx';
  * same visual language is used for links and actions.
  *
  * Variants: primary | secondary | outline | ghost | danger | subtle | white
- * Sizes:    sm | md | lg | icon
+ * Sizes:    xs | sm | md | lg | icon
  */
 const VARIANTS = {
   primary:
@@ -24,6 +24,7 @@ const VARIANTS = {
 };
 
 const SIZES = {
+  xs: 'h-6 px-1.5 text-[9px] gap-1',
   sm: 'h-9 px-3 text-sm gap-1.5',
   md: 'h-11 px-4 text-sm gap-2',
   lg: 'h-12 px-6 text-base gap-2',
@@ -61,15 +62,17 @@ export const Button = forwardRef(function Button(
     className
   );
 
+  const iconClass = size === 'xs' ? 'h-3 w-3' : 'h-4 w-4';
+
   const content = (
     <>
       {loading ? (
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        <Loader2 className={clsx('animate-spin', iconClass)} aria-hidden="true" />
       ) : Icon ? (
-        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <Icon className={clsx('shrink-0', iconClass)} aria-hidden="true" />
       ) : null}
       {children ? <span className="truncate">{children}</span> : null}
-      {IconRight && !loading ? <IconRight className="h-4 w-4 shrink-0" aria-hidden="true" /> : null}
+      {IconRight && !loading ? <IconRight className={clsx('shrink-0', iconClass)} aria-hidden="true" /> : null}
     </>
   );
 

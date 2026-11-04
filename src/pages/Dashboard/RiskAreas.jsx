@@ -265,12 +265,12 @@ export default function RiskAreas() {
                         {item.kind === 'flood' ? 'FLOOD' : 'HAZARD'}
                       </span>
                       {item.severity ? (
-                        <Badge tone={severityTone(item.severity)} size="sm">
+                        <Badge tone={severityTone(item.severity)} size="xs">
                           {humanize(item.severity)}
                         </Badge>
                       ) : null}
                       {Number.isFinite(item.distance) ? (
-                        <Badge tone="neutral" size="sm">
+                        <Badge tone="neutral" size="xs">
                           {formatDistance(item.distance)}
                         </Badge>
                       ) : null}

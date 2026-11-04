@@ -255,6 +255,7 @@ export default function PowerStations() {
         mapEmptyLabel="No mapped stations yet"
       >
         <DataView
+          dense
           isLoading={activeQuery.isLoading}
           error={activeQuery.isError}
           errorMessage={toUserMessage(activeQuery.error)}
@@ -291,6 +292,7 @@ export default function PowerStations() {
             const owned = station.createdBy !== null && String(station.createdBy) === String(user?.id);
             return (
               <RecordCard
+                variant="feed"
                 icon={Plug}
                 iconTone={availabilityTone(station.availability) === 'success' ? 'success' : 'danger'}
                 title={station.name}
@@ -321,7 +323,7 @@ export default function PowerStations() {
                   owned ? (
                     <>
                       <Button
-                        size="sm"
+                        size="xs"
                         variant="outline"
                         icon={Pencil}
                         onClick={() => {
@@ -332,7 +334,7 @@ export default function PowerStations() {
                         Edit
                       </Button>
                       <Button
-                        size="sm"
+                        size="xs"
                         variant="ghost"
                         icon={Trash2}
                         className="text-danger-600"

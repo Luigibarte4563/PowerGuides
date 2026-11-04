@@ -215,36 +215,94 @@ export default function Heatmap() {
 
         {isLoading ? (
           <LoadingState label="Loading map layers…" />
-        ) : clusters.length ? (
-          <ul className="space-y-2">
-            {[...clusters]
-              .sort((a, b) => (b.count || 0) - (a.count || 0))
-              .slice(0, 10)
-              .map((cluster) => (
-                <li
-                  key={cluster.id ?? cluster.label}
-                  className="rounded-xl border border-white/5 bg-[#1C1D30]/35 p-2.5 transition duration-200 hover:-translate-y-0.5"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-[13px] font-bold text-white">{cluster.label}</p>
-                    <Badge
-                      tone={cluster.forecastLevel ? severityTone(cluster.forecastLevel) : 'neutral'}
-                      size="sm"
-                    >
-                      {formatNumber(cluster.count)} reports
-                    </Badge>
-                  </div>
-                  {cluster.forecastLevel ? (
-                    <p className="mt-0.5 text-[11px] text-white/50">
-                      {humanize(cluster.forecastLevel)} forecast
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-          </ul>
+        ) : points.length || clusters.length ? (
+          <div className="space-y-3">
+            {/* Heat points exist whenever recent reports exist, so they are the
+                primary records; stored clusters only appear once staff save some. */}
+            {points.length ? (
+              <ul className="space-y-2">
+                {[...points]
+                  .sort((a, b) => (b.reportCount || 0) - (a.reportCount || 0))
+                  .slice(0, 10)
+                  .map((point) => {
+                    const houses = Number(point.raw?.affected_houses) || 0;
+                    const facts = [
+                      point.forecastLevel ? `${humanize(point.forecastLevel)} forecast` : '',
+                      houses > 0
+                        ? `${formatNumber(houses)} household${houses === 1 ? '' : 's'} affected`
+                        : '',
+                      Number.isFinite(Number(point.severityScore))
+                        ? `Severity ${formatNumber(point.severityScore)}`
+                        : '',
+                      Number.isFinite(Number(point.confidenceScore))
+                        ? `${formatNumber(point.confidenceScore)}% confirmed`
+                        : '',
+                    ].filter(Boolean);
+                    return (
+                      <li
+                        key={point.label}
+                        className="rounded-xl border border-white/5 bg-[#1C1D30]/35 p-2.5 transition duration-200 hover:-translate-y-0.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-[13px] font-bold text-white">{point.label}</p>
+                          <Badge
+                            tone={point.forecastLevel ? severityTone(point.forecastLevel) : 'danger'}
+                            size="xs"
+                          >
+                            {formatNumber(point.reportCount)} report
+                            {point.reportCount === 1 ? '' : 's'}
+                          </Badge>
+                        </div>
+                        {facts.length ? (
+                          <p className="mt-0.5 truncate text-[11px] text-white/50">
+                            {facts.join(' · ')}
+                          </p>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+              </ul>
+            ) : null}
+
+            {clusters.length ? (
+              <div>
+                {points.length ? (
+                  <p className="mb-2 text-[8px] font-extrabold uppercase tracking-[0.2em] text-white/35">
+                    Stored clusters
+                  </p>
+                ) : null}
+                <ul className="space-y-2">
+                  {[...clusters]
+                    .sort((a, b) => (b.count || 0) - (a.count || 0))
+                    .slice(0, 10)
+                    .map((cluster) => (
+                      <li
+                        key={cluster.id ?? cluster.label}
+                        className="rounded-xl border border-white/5 bg-[#1C1D30]/35 p-2.5 transition duration-200 hover:-translate-y-0.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-[13px] font-bold text-white">{cluster.label}</p>
+                          <Badge
+                            tone={cluster.forecastLevel ? severityTone(cluster.forecastLevel) : 'neutral'}
+                            size="xs"
+                          >
+                            {formatNumber(cluster.count)} reports
+                          </Badge>
+                        </div>
+                        {cluster.forecastLevel ? (
+                          <p className="mt-0.5 text-[11px] text-white/50">
+                            {humanize(cluster.forecastLevel)} forecast
+                          </p>
+                        ) : null}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
         ) : !error ? (
           <p className="text-[11px] leading-relaxed text-white/40">
-            No clusters stored yet. Heat intensity still shows where reports concentrate.
+            No recent outage reports to map yet. New reports will appear here automatically.
           </p>
         ) : null}
       </MapWorkspace>

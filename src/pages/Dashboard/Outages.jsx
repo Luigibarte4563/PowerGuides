@@ -17,7 +17,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import AppMap from '@/components/Map';
+import AppMap, { MapLegend } from '@/components/Map';
 import { outagesApi } from '@/api';
 import { QUERY_KEYS } from '@/utils/constants';
 import { formatRelativeTime, formatTime, hasCoordinates } from '@/utils/formatters';
@@ -278,7 +278,7 @@ export default function Outages() {
                   center={[Number(outage.lat), Number(outage.lng)]}
                   radius={9}
                   pathOptions={{
-                    color: style.color,
+                    color: '#ffffff',
                     fillColor: style.color,
                     fillOpacity: 0.88,
                     opacity: 1,
@@ -339,27 +339,14 @@ export default function Outages() {
               {mappableReports.length} plotted
             </div>
 
-            <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-2xl border border-white/10 bg-[#0B0D20]/80 p-3 shadow-2xl backdrop-blur-md">
-              <p className="text-[8px] font-extrabold uppercase tracking-[0.2em] text-white/35">
-                Severity level
-              </p>
-              <ul className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
-                {[
-                  { label: 'Critical', color: '#FF2E1F' },
-                  { label: 'Moderate', color: '#FFBB02' },
-                  { label: 'Minor', color: '#34FB34' },
-                  { label: 'Unknown', color: '#9CA3AF' },
-                ].map((item) => (
-                  <li key={item.label} className="flex items-center gap-1.5 text-[9px] text-white/55">
-                    <span
-                      className="h-1.5 w-1.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    {item.label}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <MapLegend
+              title="Severity level"
+              items={[
+                { label: 'Critical', tone: 'danger' },
+                { label: 'Moderate', tone: 'primary' },
+                { label: 'Minor', tone: 'success' },
+              ]}
+            />
 
             {!feedQuery.isLoading && !feedQuery.isError && !mappableReports.length ? (
               <div className="pointer-events-none absolute inset-x-3 top-14 z-[450] flex justify-center">

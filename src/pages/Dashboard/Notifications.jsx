@@ -93,7 +93,10 @@ export default function Notifications() {
   );
 
   return (
-    <div className="space-y-6">
+    <div
+      data-theme="dark"
+      className="min-h-full space-y-6 bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
       <PageHeader
         title="Notifications"
         description="Everything sent to your account, newest first, grouped by day."
@@ -149,14 +152,14 @@ export default function Notifications() {
       {unreadCount > 0 ? (
         <Card>
           <CardBody className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-primary-100 text-primary-700">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-[#FFBB02]/25 bg-[#FFBB02]/15 text-[#FFBB02]">
               <Bell className="h-5 w-5" aria-hidden="true" />
             </span>
             <div>
-              <p className="text-sm font-bold text-navy-900">
+              <p className="text-sm font-bold text-white">
                 You have {unreadCount} unread notification{unreadCount === 1 ? '' : 's'}
               </p>
-              <p className="mt-0.5 text-sm text-navy-500">
+              <p className="mt-0.5 text-sm text-white/50">
                 Mark them as read once you have taken note so your count stays accurate.
               </p>
             </div>

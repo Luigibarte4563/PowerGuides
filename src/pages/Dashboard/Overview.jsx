@@ -145,7 +145,10 @@ export default function Overview() {
   const reportsFailed = reportQueries.every((query) => query.isError);
 
   return (
-    <div className="space-y-6">
+    <div
+      data-theme="dark"
+      className="min-h-full space-y-6 bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
       <PageHeader
         title={`${greeting}, ${user?.name?.split(' ')[0] || 'neighbour'}`}
         description="Here is what is happening around you right now."
@@ -273,10 +276,10 @@ export default function Overview() {
           </CardHeader>
           <CardBody className="space-y-4">
             {!hasLocation ? (
-              <div className="rounded-card border border-dashed border-navy-200 bg-canvas p-6 text-center">
-                <MapPin className="mx-auto h-6 w-6 text-navy-400" aria-hidden="true" />
-                <p className="mt-2 text-sm font-semibold text-navy-800">No location saved yet</p>
-                <p className="mx-auto mt-1 max-w-sm text-xs text-navy-500">
+              <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] p-6 text-center">
+                <MapPin className="mx-auto h-6 w-6 text-white/35" aria-hidden="true" />
+                <p className="mt-2 text-sm font-semibold text-white">No location saved yet</p>
+                <p className="mx-auto mt-1 max-w-sm text-xs text-white/40">
                   Save your location so PowerGuide can show floods, hazards and power stations around you.
                 </p>
                 <Button to="/dashboard/location" variant="primary" size="sm" className="mt-4">
@@ -292,17 +295,18 @@ export default function Overview() {
                 onRetry={() => nearbyRisks.refetch()}
               />
             ) : riskItems.length === 0 ? (
-              <div className="rounded-card border border-success-200 bg-success-50 p-6 text-center">
-                <p className="text-sm font-bold text-success-700">All clear nearby</p>
-                <p className="mt-1 text-xs text-navy-600">
+              <div className="rounded-xl border border-[#34FB34]/20 bg-[#34FB34]/10 p-6 text-center">
+                <p className="text-sm font-bold text-[#34FB34]">All clear nearby</p>
+                <p className="mt-1 text-xs text-white/60">
                   No active floods or unresolved electrical hazards were reported within 2 km.
                 </p>
               </div>
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-2">
                 {riskItems.map(({ item, kind }) => (
                   <li key={`${kind}-${item.id}`}>
                     <RecordCard
+                      variant="feed"
                       icon={kind === 'flood' ? Waves : AlertTriangle}
                       iconTone={kind === 'flood' ? 'info' : 'danger'}
                       title={kind === 'flood' ? item.barangay || 'Flood report' : item.hazardType || 'Electrical hazard'}
@@ -350,14 +354,15 @@ export default function Overview() {
                   }}
                 />
               ) : latestReports.length === 0 ? (
-                <p className="rounded-card border border-dashed border-navy-200 bg-canvas p-5 text-center text-sm text-navy-500">
+                <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] p-5 text-center text-sm text-white/40">
                   No reports yet. Be the first to report an outage, flood or hazard.
                 </p>
               ) : (
-                <ul className="space-y-3">
+                <ul className="space-y-2">
                   {latestReports.slice(0, 6).map((row) => (
                     <li key={`${row.kind}-${row.record.id}`}>
                       <RecordCard
+                        variant="feed"
                         icon={REPORT_KIND[row.kind].icon}
                         iconTone={REPORT_KIND[row.kind].tone}
                         title={
@@ -406,14 +411,15 @@ export default function Overview() {
                   onRetry={() => upcomingMaintenance.refetch()}
                 />
               ) : (upcomingMaintenance.data || []).length === 0 ? (
-                <p className="rounded-card border border-dashed border-navy-200 bg-canvas p-5 text-center text-sm text-navy-500">
+                <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] p-5 text-center text-sm text-white/40">
                   No scheduled maintenance announced yet.
                 </p>
               ) : (
-                <ul className="space-y-3">
+                <ul className="space-y-2">
                   {(upcomingMaintenance.data || []).slice(0, 4).map((maintenance) => (
                     <li key={maintenance.id}>
                       <RecordCard
+                        variant="feed"
                         icon={CalendarClock}
                         iconTone="info"
                         title={maintenance.title}
@@ -453,7 +459,7 @@ export default function Overview() {
           Area map
         </CardHeader>
         <CardBody>
-          <div className="h-72 w-full overflow-hidden rounded-card border border-navy-200">
+          <div className="h-72 w-full overflow-hidden rounded-xl border border-white/10">
             <AppMap center={coords || undefined} zoom={coords ? 14 : undefined} className="h-full w-full">
               {riskItems.map(({ item, kind }) =>
                 Number.isFinite(item.lat) && Number.isFinite(item.lng) ? (
@@ -481,13 +487,13 @@ export default function Overview() {
         </CardBody>
       </Card>
 
-      <p className="text-center text-xs text-navy-400">
+      <p className="text-center text-xs text-white/35">
         Need the full picture? Visit{' '}
-        <Link to="/dashboard/risk-areas" className="font-semibold text-primary-600 hover:text-primary-700">
+        <Link to="/dashboard/risk-areas" className="font-semibold text-[#FFBB02] hover:text-[#FFD400]">
           risk areas
         </Link>{' '}
         or{' '}
-        <Link to="/dashboard/power-stations" className="font-semibold text-primary-600 hover:text-primary-700">
+        <Link to="/dashboard/power-stations" className="font-semibold text-[#FFBB02] hover:text-[#FFD400]">
           power stations
         </Link>
         .
@@ -527,17 +533,17 @@ function SummaryCard({ label, value, isLoading, icon, tone, to }) {
 }
 
 const QUICK_TONES = {
-  primary: 'hover:border-primary-300 hover:bg-primary-50/60',
-  info: 'hover:border-info-200 hover:bg-info-50/60',
-  danger: 'hover:border-danger-200 hover:bg-danger-50/60',
-  success: 'hover:border-success-200 hover:bg-success-50/60',
+  primary: 'hover:border-[#FFBB02]/40 hover:bg-[#FFBB02]/10',
+  info: 'hover:border-[#22D3EE]/40 hover:bg-[#22D3EE]/10',
+  danger: 'hover:border-[#FF2E1F]/40 hover:bg-[#FF2E1F]/10',
+  success: 'hover:border-[#34FB34]/40 hover:bg-[#34FB34]/10',
 };
 
 const QUICK_ICON_TONES = {
-  primary: 'bg-primary-100 text-primary-700',
-  info: 'bg-info-50 text-info-700',
-  danger: 'bg-danger-50 text-danger-700',
-  success: 'bg-success-50 text-success-700',
+  primary: 'border border-[#FFBB02]/25 bg-[#FFBB02]/15 text-[#FFBB02]',
+  info: 'border border-[#22D3EE]/25 bg-[#22D3EE]/15 text-[#22D3EE]',
+  danger: 'border border-[#FF2E1F]/25 bg-[#FF2E1F]/15 text-[#FF2E1F]',
+  success: 'border border-[#34FB34]/25 bg-[#34FB34]/15 text-[#34FB34]',
 };
 
 function QuickAction({ icon: Icon, label, description, onClick, tone = 'primary' }) {
@@ -545,14 +551,14 @@ function QuickAction({ icon: Icon, label, description, onClick, tone = 'primary'
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-3 rounded-card border border-navy-100 bg-white p-4 text-left shadow-card transition ${QUICK_TONES[tone]}`}
+      className={`flex items-center gap-3 rounded-xl border border-white/5 bg-[#1C1D30]/35 p-4 text-left transition ${QUICK_TONES[tone]}`}
     >
       <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-control ${QUICK_ICON_TONES[tone]}`}>
         <Icon className="h-5 w-5" aria-hidden="true" />
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-bold text-navy-900">{label}</span>
-        <span className="block truncate text-xs text-navy-500">{description}</span>
+        <span className="block text-sm font-bold text-white">{label}</span>
+        <span className="block truncate text-xs text-white/40">{description}</span>
       </span>
     </button>
   );

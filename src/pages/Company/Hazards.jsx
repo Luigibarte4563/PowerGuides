@@ -201,9 +201,9 @@ export default function Hazards() {
             nearbyPoints.length
               ? nearbyPoints.slice(0, 5).map((hazard, index) => ({
                   label: hazard.distance ? formatDistance(hazard.distance) : `Result ${index + 1}`,
-                  tone: index === 0 ? 'danger' : index < 3 ? 'warning' : 'neutral',
+                  tone: index === 0 ? 'danger' : index < 3 ? 'warning' : 'primary',
                 }))
-              : [{ label: 'Nothing in range', tone: 'neutral' }]
+              : []
           }
         />
       </AppMap>
@@ -349,6 +349,7 @@ export default function Hazards() {
       >
         <div className="space-y-3">
           <DataView
+            dense
             isLoading={listQuery.isLoading}
             error={listQuery.isError}
             onRetry={() => listQuery.refetch()}
@@ -364,6 +365,7 @@ export default function Hazards() {
               const action = STATUS_ACTIONS[String(hazard.status ?? '').toLowerCase()];
               return (
                 <RecordCard
+                  variant="feed"
                   icon={AlertTriangle}
                   iconTone={severityTone(hazard.severity)}
                   title={hazard.locationName || hazard.barangay || 'Electrical hazard'}
@@ -385,7 +387,7 @@ export default function Hazards() {
                   actions={
                     action ? (
                       <Button
-                        size="sm"
+                        size="xs"
                         variant={action.tone}
                         icon={action.icon}
                         loading={statusMutation.isPending && statusMutation.variables?.hazardId === hazard.id}

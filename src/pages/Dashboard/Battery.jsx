@@ -51,16 +51,16 @@ function BatteryBar({ percentage }) {
   const value = Math.max(0, Math.min(100, Number(percentage) || 0));
   const { tone } = batteryTone(value);
   const barColors = {
-    success: 'bg-success-500',
-    warning: 'bg-warning-500',
-    danger: 'bg-danger-600',
-    neutral: 'bg-navy-300',
+    success: 'bg-[#34FB34]',
+    warning: 'bg-[#FFBB02]',
+    danger: 'bg-[#FF2E1F]',
+    neutral: 'bg-white/30',
   };
 
   return (
     <div className="mt-3">
       <div
-        className="h-2 w-full overflow-hidden rounded-full bg-navy-100"
+        className="h-2 w-full overflow-hidden rounded-full bg-white/10"
         role="meter"
         aria-valuenow={value}
         aria-valuemin={0}
@@ -69,7 +69,7 @@ function BatteryBar({ percentage }) {
       >
         <div className={`h-full rounded-full ${barColors[tone]}`} style={{ width: `${value}%` }} />
       </div>
-      <p className="mt-1 text-xs font-semibold text-navy-600">{value}% charged</p>
+      <p className="mt-1 text-xs font-semibold text-white/60">{value}% charged</p>
     </div>
   );
 }
@@ -113,7 +113,10 @@ export default function Battery() {
   const lowCount = devices.filter((device) => (Number(device.percentage) || 0) < 40).length;
 
   return (
-    <div className="space-y-6">
+    <div
+      data-theme="dark"
+      className="min-h-full space-y-6 bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
       <PageHeader
         title="Battery Tracking"
         description="Keep an eye on your own devices so essentials are charged before the lights go out."
@@ -134,24 +137,24 @@ export default function Battery() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardBody>
-            <p className="text-sm font-medium text-navy-500">Tracked devices</p>
-            <p className="mt-1 text-2xl font-extrabold text-navy-900">
+            <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-white/40">Tracked devices</p>
+            <p className="mt-0.5 text-2xl font-black text-white">
               {devicesQuery.isLoading ? '—' : devices.length}
             </p>
           </CardBody>
         </Card>
         <Card>
           <CardBody>
-            <p className="text-sm font-medium text-navy-500">Average charge</p>
-            <p className="mt-1 text-2xl font-extrabold text-navy-900">
+            <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-white/40">Average charge</p>
+            <p className="mt-0.5 text-2xl font-black text-white">
               {devicesQuery.isLoading ? '—' : `${totalAverage}%`}
             </p>
           </CardBody>
         </Card>
         <Card>
           <CardBody>
-            <p className="text-sm font-medium text-navy-500">Needs charging</p>
-            <p className="mt-1 text-2xl font-extrabold text-navy-900">
+            <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-white/40">Needs charging</p>
+            <p className="mt-0.5 text-2xl font-black text-white">
               {devicesQuery.isLoading ? '—' : lowCount}
             </p>
           </CardBody>
@@ -190,37 +193,37 @@ export default function Battery() {
             return (
               <Card key={device.id}>
                 <CardBody>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
                       <span
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-control ${
                           tone === 'success'
-                            ? 'bg-success-50 text-success-700'
+                            ? 'bg-[#34FB34]/15 text-[#34FB34]'
                             : tone === 'warning'
-                              ? 'bg-warning-50 text-warning-700'
-                              : 'bg-danger-50 text-danger-700'
+                              ? 'bg-[#FFBB02]/15 text-[#FFBB02]'
+                              : 'bg-[#FF2E1F]/15 text-[#FF2E1F]'
                         }`}
                       >
                         <Icon className="h-5 w-5" aria-hidden="true" />
                       </span>
                       <div className="min-w-0">
-                        <h3 className="truncate text-sm font-bold text-navy-900">{device.name}</h3>
-                        <p className="text-xs text-navy-500">
+                        <h3 className="truncate text-sm font-bold text-white">{device.name}</h3>
+                        <p className="text-xs text-white/40">
                           {humanize(device.deviceType, 'Device')}
                           {device.capacity ? ` · ${formatNumber(device.capacity)} mAh` : ''}
                         </p>
                       </div>
                     </div>
-                    <Badge tone={tone} size="sm">
+                    <Badge tone={tone} size="sm" className="shrink-0">
                       {label}
                     </Badge>
                   </div>
 
                   <BatteryBar percentage={device.percentage} />
 
-                  {device.notes ? <p className="mt-3 text-xs text-navy-500">{device.notes}</p> : null}
+                  {device.notes ? <p className="mt-3 text-xs text-white/40">{device.notes}</p> : null}
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-navy-100 pt-3">
+                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/5 pt-3">
                     <Button size="sm" variant="primary" onClick={() => setLevelDevice(device)}>
                       Set %
                     </Button>
@@ -361,7 +364,7 @@ function SetPercentageModal({ device, onClose, onSaved }) {
     >
       <div className="space-y-4">
         {error ? (
-          <p role="alert" className="rounded-control bg-danger-50 p-3 text-sm font-medium text-danger-700">
+          <p role="alert" className="rounded-control bg-[#FF2E1F]/15 p-3 text-sm font-medium text-[#FF2E1F]">
             {error}
           </p>
         ) : null}
@@ -439,7 +442,7 @@ function LogUsageModal({ device, onClose, onSaved }) {
     >
       <div className="space-y-4">
         {errors.form ? (
-          <p role="alert" className="rounded-control bg-danger-50 p-3 text-sm font-medium text-danger-700">
+          <p role="alert" className="rounded-control bg-[#FF2E1F]/15 p-3 text-sm font-medium text-[#FF2E1F]">
             {errors.form}
           </p>
         ) : null}
@@ -525,7 +528,7 @@ function HistoryModal({ device, onClose }) {
       }
     >
       <div className="space-y-4">
-        <div className="inline-flex rounded-card border border-navy-100 bg-canvas p-1">
+        <div className="inline-flex rounded-xl border border-white/10 bg-[#03041A]/60 p-1">
           <Button
             size="sm"
             variant={tab === 'chart' ? 'secondary' : 'ghost'}
@@ -580,15 +583,15 @@ function HistoryModal({ device, onClose }) {
             </ResponsiveContainer>
           </div>
         ) : (
-          <ul className="max-h-72 divide-y divide-navy-100 overflow-y-auto">
+          <ul className="max-h-72 divide-y divide-white/5 overflow-y-auto">
             {logs.map((log) => (
               <li
                 key={log.id ?? `${log.loggedAt}-${log.endPercentage}`}
                 className="flex items-center justify-between gap-3 py-3"
               >
                 <div>
-                  <p className="text-sm font-semibold text-navy-800">{formatDateTime(log.loggedAt)}</p>
-                  <p className="text-xs text-navy-500">
+                  <p className="text-sm font-semibold text-white/70">{formatDateTime(log.loggedAt)}</p>
+                  <p className="text-xs text-white/40">
                     {Number.isFinite(log.startPercentage) ? `${log.startPercentage}%` : '—'}
                     {' → '}
                     {Number.isFinite(log.endPercentage) ? `${log.endPercentage}%` : '—'}

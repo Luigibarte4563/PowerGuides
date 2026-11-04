@@ -218,6 +218,7 @@ export default function Maintenance() {
         mapEmptyLabel="No mapped maintenance areas yet"
       >
         <DataView
+          dense
           isLoading={listQuery.isLoading}
           error={listQuery.isError}
           errorMessage={toUserMessage(listQuery.error)}
@@ -234,6 +235,7 @@ export default function Maintenance() {
           }}
           renderCard={(item) => (
             <RecordCard
+              variant="feed"
               icon={Wrench}
               iconTone="info"
               title={item.title}

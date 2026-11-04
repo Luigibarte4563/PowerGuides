@@ -88,7 +88,10 @@ export default function SafetyTimers() {
   const finished = timers.filter((timer) => !active.includes(timer));
 
   return (
-    <div className="space-y-6">
+    <div
+      data-theme="dark"
+      className="min-h-full space-y-6 bg-[#03041A] px-4 pb-8 pt-5 font-montserrat text-white lg:px-8 lg:pt-6"
+    >
       <PageHeader
         title="Safety Timers"
         description="Time appliances, generators or chargers so nothing runs unattended."
@@ -121,10 +124,10 @@ export default function SafetyTimers() {
         <div className="space-y-6">
           {active.length ? (
             <section className="space-y-3">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-navy-500">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-white/40">
                 Active timers
               </h2>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
                 {active.map((timer) => (
                   <TimerCard
                     key={timer.id}
@@ -140,11 +143,11 @@ export default function SafetyTimers() {
 
           {finished.length ? (
             <section className="space-y-3">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-navy-500">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-white/40">
                 Stopped and expired
               </h2>
               <Card>
-                <CardBody className="grid gap-3 md:grid-cols-2">
+                <CardBody className="grid gap-3 md:grid-cols-2 [&>*]:min-w-0">
                   {finished.map((timer) => (
                     <TimerCard key={timer.id} timer={timer} onDelete={() => setDeleting(timer)} compact />
                   ))}
@@ -187,24 +190,24 @@ function TimerCard({ timer, onStop, onDelete, stopping = false, compact = false 
   return (
     <Card className={compact ? '' : 'shadow-card-hover'}>
       <CardBody>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
             <span
               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-control ${
-                isFinished ? 'bg-navy-100 text-navy-500' : 'bg-primary-100 text-primary-700'
+                isFinished ? 'bg-white/5 text-white/40' : 'border border-[#FFBB02]/25 bg-[#FFBB02]/15 text-[#FFBB02]'
               }`}
             >
               <Timer className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <h3 className="truncate text-sm font-bold text-navy-900">{timer.title}</h3>
-              <p className="text-xs text-navy-500">
+              <h3 className="truncate text-sm font-bold text-white">{timer.title}</h3>
+              <p className="text-xs text-white/40">
                 {timer.type ? humanize(timer.type) : 'Custom timer'}
                 {Number.isFinite(timer.durationHours) ? ` · ${timer.durationHours} h` : ''}
               </p>
             </div>
           </div>
-          <Badge tone={tone} size="sm">
+          <Badge tone={tone} size="sm" className="shrink-0">
             {humanize(status)}
           </Badge>
         </div>
@@ -213,21 +216,21 @@ function TimerCard({ timer, onStop, onDelete, stopping = false, compact = false 
           <div className="mt-4">
             <p
               className={`font-mono text-3xl font-extrabold tabular-nums ${
-                isFinished ? 'text-navy-400' : 'text-navy-900'
+                isFinished ? 'text-white/30' : 'text-white'
               }`}
               role="timer"
             >
               {isFinished ? (status === 'stopped' ? 'Stopped' : 'Expired') : countdown.label}
             </p>
-            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-navy-100">
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
               <div
                 className={`h-full rounded-full transition-all ${
-                  isFinished ? 'bg-navy-300' : 'bg-primary-500'
+                  isFinished ? 'bg-white/30' : 'bg-[#FFBB02]'
                 }`}
                 style={{ width: `${Math.round(countdown.progress * 100)}%` }}
               />
             </div>
-            <p className="mt-1 text-xs text-navy-500">
+            <p className="mt-1 text-xs text-white/40">
               {isFinished
                 ? timer.completedAt
                   ? `Ended ${formatDateTime(timer.completedAt)}`
@@ -235,7 +238,7 @@ function TimerCard({ timer, onStop, onDelete, stopping = false, compact = false 
                 : `Ends ${formatDateTime(timer.endsAt)}`}
             </p>
             {status === 'warning' ? (
-              <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-warning-700">
+              <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[#FFBB02]">
                 <Bell className="h-3.5 w-3.5" aria-hidden="true" />
                 Warning window reached
               </p>
@@ -243,9 +246,9 @@ function TimerCard({ timer, onStop, onDelete, stopping = false, compact = false 
           </div>
         ) : null}
 
-        {timer.notes ? <p className="mt-3 text-xs text-navy-500">{timer.notes}</p> : null}
+        {timer.notes ? <p className="mt-3 text-xs text-white/40">{timer.notes}</p> : null}
 
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-navy-100 pt-3">
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/5 pt-3">
           {!isFinished && onStop ? (
             <Button size="sm" variant="outline" icon={Square} loading={stopping} onClick={onStop}>
               Stop
@@ -365,8 +368,8 @@ function TimerFormModal({ open, onClose, types, typesLoading, onCreated }) {
             onClick={() => setField('durationHours', String(hours))}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
               Number(values.durationHours) === hours
-                ? 'border-primary-400 bg-primary-100 text-primary-800'
-                : 'border-navy-200 bg-white text-navy-600 hover:bg-navy-50'
+                ? 'border-[#FFBB02]/40 bg-[#FFBB02]/15 text-[#FFBB02]'
+                : 'border-white/10 bg-transparent text-white/45 hover:border-white/20 hover:text-white/70'
             }`}
           >
             {hours < 1 ? `${hours * 60} min` : `${hours} h`}
@@ -402,7 +405,7 @@ function TimerFormModal({ open, onClose, types, typesLoading, onCreated }) {
         onChange={(event) => setField('notes', event.target.value)}
       />
 
-      <p className="flex items-start gap-2 text-xs text-navy-500">
+      <p className="flex items-start gap-2 text-xs text-white/40">
         <AlarmClock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         Timers are private to your account. Stop a timer as soon as the appliance is off.
       </p>
