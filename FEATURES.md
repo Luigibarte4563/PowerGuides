@@ -12,22 +12,23 @@ For setup, architecture and the full API contract, see [`README.md`](README.md) 
 
 ## Apps at a glance
 
-The codebase ships two apps:
+The codebase ships three apps:
 
 | App | Route | Who uses it | Purpose |
 | --- | ----- | ----------- | ------- |
 | **Resident app** | `/dashboard` | Every signed-in user | Report problems, track status, see schedules and nearby risks |
 | **Staff app** | `/company` | `lineman`, `electric_company`, `admin` | Verify reports, post field updates, manage maintenance, broadcast notifications, assign linemen |
+| **Admin app** | `/admin` | `admin` | User directory, role management and platform-wide analytics |
 
 | Role | Reaches |
 | ---- | ------- |
 | `user` | `/dashboard` only |
-| `lineman` | both apps; outage access limited to assigned barangays |
+| `lineman` | both apps; outage access limited to assigned barangays (see assignments below) |
 | `electric_company` | both apps; all company writes, assignment management |
-| `admin` | everything |
+| `admin` | everything, plus `/admin` |
 
-Role management itself is **not** built — the API has no endpoint for it, so roles are granted by
-writing `users.role_id` in the database.
+Sign-in lands each role on its own home: `admin` → `/admin`, staff → `/company`, everyone else →
+`/dashboard`.
 
 ---
 
@@ -38,7 +39,7 @@ writing `users.role_id` in the database.
 | `/` | Landing page |
 | `/login` | Login (email + Google) |
 | `/register` | Register (email + Google) |
-| `/auth/google-callback` | OAuth landing: stores the JWT, then redirects to `/dashboard` |
+| `/auth/google-callback` | OAuth landing: stores the JWT, then redirects to the role's home app |
 
 ### Landing page
 
@@ -59,7 +60,8 @@ writing `users.role_id` in the database.
   `google_exchange_failed`, `google_invalid_token`, …) — raw codes are never shown
 - Session restored on load from `me.php`, so a reload never signs the user out
 - Unauthenticated visitors are redirected to `/login` with their original destination remembered;
-  signed-in visitors are redirected away from `/login` and `/register`
+  a signed-in visitor on `/login` or `/register` gets an **already signed in** card — continue to
+  their role's home app, or sign out to reveal the login form — never a silent redirect
 - Access-denied page for a signed-in user following a deep link they cannot use
 
 ---
@@ -70,6 +72,11 @@ writing `users.role_id` in the database.
 
 - Summary cards across reports, stations, notifications and saved location
 - Quick actions to the most common tasks (report an outage, report a hazard, check risk nearby)
+
+### My assigned barangays (linemen)
+
+- A lineman's own view of the barangays they are assigned to cover, with each assignment's work type
+- Each assignment opens the outages and the maintenance schedules it covers
 
 ### Outage reporting and tracking
 
@@ -108,7 +115,8 @@ writing `users.role_id` in the database.
 ### Maintenance schedules
 
 - Upcoming, ongoing and completed schedules from the electric company
-- List plus map, with each schedule's covered barangays drawn as a radius
+- List plus map, with each affected barangay drawn as its own coverage circle (radius capped at
+  500 m)
 - Read-only for residents
 
 ### Power stations
@@ -121,7 +129,10 @@ writing `users.role_id` in the database.
 ### Notifications
 
 - Inbox of alerts about outages, hazards and maintenance near you
-- Unread count on the topbar bell
+- Unread count on the topbar bell, which previews the message and opens the detail view
+- History timeline grouped by day, with load-more paging
+- Detail modal that can open the outage, schedule, flood or hazard the alert points at (only
+  outages have a detail page; the rest fall back to their list page)
 - Mark as read / mark all as read
 
 ### Saved location
@@ -158,15 +169,16 @@ inside a dashboard they cannot use.
 
 ### Operations overview
 
-- 15 stat cards covering reports, statuses, severities, hazards, floods, maintenance, stations and
-  notifications
-- Recent activity feed
+- Figures grouped into sections — outage reports by status, field crew coverage (managers only),
+  hazards & floods, and assets — plus a recent activity feed
+- A lineman's counts are scoped server-side to their assigned barangays; managers see the city
 
 ### Outage management
 
 - **Company view** and **All reports (raw)**, with filters for status, severity and active state
 - Report detail: status, verification and field updates
 - **Verify** a report and post field updates as the assigned lineman
+- Assign a lineman straight from the list or a report, with the barangay prefilled
 - Bulk status changes at three scopes:
   - a single report
   - every report in a barangay
@@ -174,7 +186,9 @@ inside a dashboard they cannot use.
 
 ### Lineman assignments
 
-- Assign field linemen to the barangays they cover
+- Assign field linemen to the barangays they cover, with a **work type** (`outage`, `maintenance`
+  or `both`) that decides what the assignment allows
+- Assignments can also be created from the Outages and Maintenance screens, barangay prefilled
 - Create, move (partial update), deactivate and reactivate assignments
 - Duplicate pairs are rejected; deactivation is soft, so history survives and re-assignment
   reactivates the same row
@@ -184,6 +198,8 @@ inside a dashboard they cannot use.
 
 - Browse, create, edit and delete maintenance schedules
 - Authoring is **manager-only**; all staff can read
+- A lineman whose assignment covers the schedule's barangay can post **status-only** updates
+  (work type `maintenance` or `both`)
 
 ### Map and risk
 
@@ -196,7 +212,7 @@ inside a dashboard they cannot use.
 
 ### Notifications
 
-- Staff inbox
+- Staff inbox, with the same history timeline and detail modal as the resident inbox
 - Compose and send notifications to explicit users (**manager-only**)
 
 ### Hazards
@@ -209,6 +225,30 @@ inside a dashboard they cannot use.
 
 ---
 
+## Admin app (`/admin`)
+
+Admin only — any other account, including staff, gets the access-denied page on a deep link. This
+is the screen the platform never had: roles used to be granted by editing `users.role_id` in the
+database by hand.
+
+### Platform overview
+
+- Every figure from one admin-only stats endpoint: user totals and counts by role, outages by
+  status and severity, floods, hazards, maintenance, power stations and notifications
+- 30-day report trend chart and the top barangays by report count
+
+### Users
+
+- Directory of every account with search and role filters: name, email, role, provider, created
+  and last-login times — never password or OAuth secrets
+- Create a local account with any role (the authenticated counterpart of registration)
+- Change a user's role; your own row has no role picker (the server rejects changing your own
+  role, so the only admin cannot lock themselves out)
+- A role change reaches the target's API permissions at their **next sign-in**, because the role
+  travels inside their JWT — the confirm dialog and toast say so
+
+---
+
 ## Access control
 
 `useAuth().role` drives the app, through allow-lists that mirror the `requireRole(...)` arrays in
@@ -217,8 +257,11 @@ the PHP endpoints.
 - Hiding UI is a convenience, never a control — the API re-checks every permission
 - Lineman outage access is scoped server-side from the `lineman_assignments` table, so a
   deactivated assignment revokes access on the lineman's very next request
+- A lineman assignment's **work type** gates the endpoints too: outage access needs `outage` or
+  `both`, maintenance status updates need `maintenance` or `both`
 - A resident's own reports, stations and hazards are ownership-scoped by the API
-- Bulk city-wide updates and assignment management require a manager
+- Bulk city-wide updates, assignment management and notification sending require a manager;
+  `/admin` answers 403 for anyone without the `admin` role
 
 ---
 
@@ -255,8 +298,8 @@ map pin on that centroid, and the pin can be dragged to refine the point. The fr
 
 ## Not built
 
-- **Role management** — there is no API endpoint, so roles are changed directly in the database
 - **Audience / broadcast targeting** — `notification/create.php` takes explicit `user_id`s, so
   "notify a whole barangay" has to be resolved to ids client-side
-- **A user directory** — `lineman_assignment/linemen.php` is the only user listing and is restricted
-  to `role = 'lineman'`
+- **A general user directory for staff** — the admin app lists every account, but the lineman
+  picker for assignments still uses `lineman_assignment/linemen.php`, which is restricted to
+  `role = 'lineman'`
