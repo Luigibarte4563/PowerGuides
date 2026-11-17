@@ -10,25 +10,17 @@ import {
   linemanAssignmentsApi,
   ACTIVE_ASSIGNMENT_STATUS,
   INACTIVE_ASSIGNMENT_STATUS,
-  ASSIGNMENT_WORK_TYPES,
-  WORK_TYPE_LABELS,
 } from '@/api';
 import { useLinemenList } from '@/hooks/useLinemanAssignments';
 import { toFieldErrors, toUserMessage } from '@/utils/errorMessage';
 import { clearFieldError, collectErrors, hasErrors, validateRequired } from '@/utils/validators';
 
-const FIELD_ORDER = ['linemanId', 'barangayId', 'status', 'workType'];
-
-const WORK_TYPE_OPTIONS = ASSIGNMENT_WORK_TYPES.map((value) => ({
-  value,
-  label: WORK_TYPE_LABELS[value],
-}));
+const FIELD_ORDER = ['linemanId', 'barangayId', 'status'];
 
 const EMPTY = {
   linemanId: '',
   barangayId: '',
   status: ACTIVE_ASSIGNMENT_STATUS,
-  workType: 'both',
 };
 
 function toFormValues(assignment) {
@@ -37,7 +29,6 @@ function toFormValues(assignment) {
     linemanId: String(assignment.linemanId ?? ''),
     barangayId: String(assignment.barangayId ?? ''),
     status: assignment.status || ACTIVE_ASSIGNMENT_STATUS,
-    workType: assignment.workType || 'both',
   };
 }
 
@@ -115,7 +106,6 @@ export default function AssignmentFormModal({ open, assignment, onClose, onSaved
         linemanId: () => validateRequired(values.linemanId, 'A lineman'),
         barangayId: () => validateRequired(values.barangayId, 'A barangay'),
         status: () => validateRequired(values.status, 'A status'),
-        workType: () => validateRequired(values.workType, 'A work type'),
       }),
     [values]
   );
@@ -140,7 +130,7 @@ export default function AssignmentFormModal({ open, assignment, onClose, onSaved
     const payload = {
       linemanId: Number(values.linemanId),
       barangayId: Number(values.barangayId),
-      workType: values.workType,
+      status: values.status,
     };
 
     if (isEdit) {
@@ -153,9 +143,6 @@ export default function AssignmentFormModal({ open, assignment, onClose, onSaved
       }
       if (values.status !== assignment.status) {
         payload.status = values.status;
-      }
-      if (values.workType !== (assignment.workType || 'both')) {
-        payload.workType = values.workType;
       }
       // Nothing changed at all - nothing to ask the server to do.
       if (Object.keys(payload).length === 0) {
@@ -217,17 +204,6 @@ export default function AssignmentFormModal({ open, assignment, onClose, onSaved
           onChange={set('barangayId')}
           error={errors.barangayId}
           hint={selectedBarangay ? `Current: ${selectedBarangay.name}` : undefined}
-        />
-
-        <Select
-          label="Work type"
-          required
-          options={WORK_TYPE_OPTIONS}
-          disabled={mutation.isPending}
-          value={values.workType}
-          onChange={set('workType')}
-          error={errors.workType}
-          hint="What this assignment is for. It does not change the barangay access the assignment grants."
         />
 
         {isEdit ? (

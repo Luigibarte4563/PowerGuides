@@ -85,7 +85,7 @@ export default function Profile() {
             <div className="w-full space-y-2 border-t border-navy-100 pt-4 text-left">
               <Row icon={Mail} label="Email" value={user?.email || '—'} />
               <Row icon={User} label="User ID" value={user?.id ?? '—'} />
-              <Row icon={ShieldCheck} label="Role ID" value={user?.roleId ?? '—'} />
+              <Row icon={ShieldCheck} label="Role" value={user?.role ?? '—'} />
               <Row icon={ShieldCheck} label="Member since" value={formatDateTime(user?.createdAt)} />
             </div>
           </CardBody>

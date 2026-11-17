@@ -33,7 +33,7 @@ export function normaliseUser(payload) {
     lastName: last,
     email: readField(candidate, ['email', 'email_address'], ''),
     // The role comes from `me.php` ONLY (NFR-2a), which returns `role`
-    // (`roles.role_name`: user | lineman | electric_company | admin) plus `role_id`.
+    // (`roles.role_name`: user | lineman | electric_company | admin).
     //
     // There is deliberately no `auth_provider` fallback here any more: that column holds
     // 'local' or 'google', never a role, so reading it produced a nonsense role string like
@@ -42,11 +42,16 @@ export function normaliseUser(payload) {
     // all, since the least-privileged role is the safe assumption.
     role:
       normaliseRole(readField(candidate, ['role', 'role_name'], '')) || ROLE.USER,
-    roleId: readField(candidate, ['role_id'], null),
     provider: readField(candidate, ['auth_provider'], ''),
     phone: readField(candidate, ['phone', 'contact', 'contact_number'], ''),
     avatar: readField(candidate, ['picture', 'avatar', 'photo', 'profile_image'], ''),
     createdAt: readField(candidate, ['created_at', 'registered_at'], ''),
+    // Location fields (from users table after merge)
+    barangayId: readField(candidate, ['barangay_id'], null),
+    address: readField(candidate, ['address'], ''),
+    latitude: readField(candidate, ['latitude'], null),
+    longitude: readField(candidate, ['longitude'], null),
+    locationUpdatedAt: readField(candidate, ['location_updated_at'], ''),
     raw: candidate,
   };
 }

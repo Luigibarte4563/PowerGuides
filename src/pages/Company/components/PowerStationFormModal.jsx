@@ -13,9 +13,10 @@ import {
   STATION_ACCESS_TYPES,
   STATION_AVAILABILITY,
   STATION_TYPES,
+  CHARGING_TYPES,
 } from '@/pages/Dashboard/components/PowerStationFormModal';
 
-const FIELD_ORDER = ['stationName', 'locationName', 'stationType', 'accessType', 'availabilityStatus', 'barangayName'];
+const FIELD_ORDER = ['stationName', 'locationName', 'stationType', 'accessType', 'availabilityStatus', 'barangayName', 'operatingHours', 'chargingType', 'chargingTypeOther'];
 
 const EMPTY = {
   stationName: '',
@@ -25,9 +26,30 @@ const EMPTY = {
   availabilityStatus: 'available',
   barangayName: '',
   operatingHours: '',
-  chargingType: '',
+  chargingType: 'Type-2 AC',
+  chargingTypeOther: '',
   description: '',
 };
+
+function knownChargingType(value) {
+  if (!value) return null;
+  return CHARGING_TYPES.includes(value) ? value : null;
+}
+
+function validateOperatingHours(value) {
+  if (!value) return null; // optional
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 'Operating hours must be a number.';
+  if (n < 0 || n > 24) return 'Operating hours must be between 0 and 24.';
+  return null;
+}
+
+function validateChargingType(chargingType, chargingTypeOther) {
+  if (chargingType === 'Other' && !chargingTypeOther.trim()) {
+    return 'Please enter a charging type.';
+  }
+  return null;
+}
 
 function toFormValues(station) {
   if (!station) return EMPTY;
@@ -39,7 +61,8 @@ function toFormValues(station) {
     availabilityStatus: station.availability || 'available',
     barangayName: station.barangay || '',
     operatingHours: station.operatingHours || '',
-    chargingType: station.chargingType || '',
+    chargingType: knownChargingType(station.chargingType) || 'Type-2 AC',
+    chargingTypeOther: !knownChargingType(station.chargingType) && station.chargingType ? station.chargingType : '',
     description: station.description || '',
       location: null,
   };
@@ -112,6 +135,8 @@ export default function PowerStationFormModal({
       stationName: () => validateRequired(values.stationName, 'Station name'),
       locationName: () => validateRequired(values.locationName, 'Location'),
       barangayName: () => validateRequired(values.barangayName, 'Barangay'),
+      operatingHours: () => validateOperatingHours(values.operatingHours),
+      chargingType: () => validateChargingType(values.chargingType, values.chargingTypeOther),
     });
     if (hasErrors(validationErrors)) {
       setErrors(validationErrors);
@@ -130,7 +155,8 @@ export default function PowerStationFormModal({
         ? { latitude: values.location.lat, longitude: values.location.lng }
         : {}),
       operating_hours: values.operatingHours.trim(),
-      charging_type: values.chargingType.trim(),
+      // When "Other" is chosen, the custom text is the charging type; otherwise the selected label is sent.
+      charging_type: values.chargingType === 'Other' ? values.chargingTypeOther.trim() : values.chargingType,
       description: values.description.trim(),
     };
 
@@ -211,16 +237,37 @@ export default function PowerStationFormModal({
         />
         <Input
           label="Operating hours (optional)"
-          placeholder="e.g. 24 hours during outages"
+          type="number"
+          min="0"
+          max="24"
+          placeholder="e.g. 24"
           value={values.operatingHours}
           onChange={(event) => setField('operatingHours', event.target.value)}
+          error={errors.operatingHours}
+          hint="Hours per day the station is open. Leave blank if not set."
         />
-        <Input
+        <Select
           label="Charging type (optional)"
-          placeholder="e.g. Type-2 AC, fast charging"
+          options={CHARGING_TYPES}
           value={values.chargingType}
-          onChange={(event) => setField('chargingType', event.target.value)}
+          onChange={(event) => {
+            setField('chargingType', event.target.value);
+            if (event.target.value !== 'Other') {
+              setField('chargingTypeOther', '');
+            }
+          }}
+          error={errors.chargingType}
+          hint="Connector type. Choose Other to enter your own."
         />
+        {values.chargingType === 'Other' && (
+          <Input
+            label="Charging type (custom)"
+            placeholder="e.g. Proprietary connector"
+            value={values.chargingTypeOther}
+            onChange={(event) => setField('chargingTypeOther', event.target.value)}
+            error={errors.chargingType}
+          />
+        )}
       </div>
 
       <div className="rounded-card border border-navy-100 p-4">

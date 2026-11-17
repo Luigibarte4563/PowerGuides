@@ -7,7 +7,6 @@ import { TBody, TD, TH, THead, TR, Table } from './ui/Table';
 import DataView from './DataView';
 import BarangayOutagesModal from './BarangayOutagesModal';
 import BarangayMaintenanceModal from './BarangayMaintenanceModal';
-import { workTypeLabel } from '@/api';
 
 /**
  * A lineman's own assigned barangays, rendered for whichever screen asks for it.
@@ -41,10 +40,11 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
    * replaced a short, scoped answer with every report they can see; the dialog keeps the
    * context they were reading in place.
    */
-  /*
-   * The dialogs hold the whole assignment row, not just the barangay name: the row's
-   * work type decides whether the status-change actions are offered at all (the
-   * backend enforces the same rule, so hiding is a convenience, never the control).
+  /*  
+   * The dialogs hold the whole assignment row, not just the barangay name: any
+   * active assignment lets the lineman see outages and change maintenance status
+   * for that barangay (the backend enforces the same rule, so hiding is a
+   * convenience, never the control).
    */
   const [openBarangay, setOpenBarangay] = useState(null);
   const [openMaintenance, setOpenMaintenance] = useState(null);
@@ -78,9 +78,6 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   <Badge tone="success" icon={ShieldCheck} size="sm">
                     Active Assignment
-                  </Badge>
-                  <Badge tone="info" size="sm">
-                    {workTypeLabel(assignment.workType)}
                   </Badge>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -128,9 +125,6 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
                     <TD>
                       <Badge tone="success" icon={ShieldCheck}>
                         Active Assignment
-                      </Badge>
-                      <Badge tone="info" className="ml-1">
-                        {workTypeLabel(assignment.workType)}
                       </Badge>
                     </TD>
                     <TD align="right">
@@ -203,14 +197,14 @@ export default function MyAssignmentList({ assignments = [], isLoading, error, o
       <BarangayOutagesModal
         open={Boolean(openBarangay)}
         barangayName={openBarangay?.barangayName}
-        canChangeStatus={openBarangay?.workType !== 'maintenance'}
+        canChangeStatus={true}
         onClose={() => setOpenBarangay(null)}
       />
 
       <BarangayMaintenanceModal
         open={Boolean(openMaintenance)}
         barangayName={openMaintenance?.barangayName}
-        canChangeStatus={openMaintenance?.workType !== 'outage'}
+        canChangeStatus={true}
         onClose={() => setOpenMaintenance(null)}
       />
     </>

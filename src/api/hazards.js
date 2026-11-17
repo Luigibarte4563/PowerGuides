@@ -10,6 +10,9 @@ import { apiRequest, pickList } from './client';
  *                         `severity` enum: low | moderate | high | critical
  *                         `hazard_type` is resolved by hazard_types.hazard_name
  *                         (defaults to "none"; unknown values return 400).
+ *   update.php          POST { id*, location_name?, severity?, hazard_type?, description?,
+ *                              barangay_name?, latitude?, longitude? } (owner-only)
+ *                         -> { success, message }
  *   get.php             ?status=&severity=&barangay= -> data rows:
  *                         { id, reported_by, location_name, latitude, longitude, description,
  *                           severity, status, image_proof, reported_at, resolved_at,
@@ -25,6 +28,15 @@ export const HAZARD_STATUSES = ['reported', 'verified', 'resolved'];
 export const hazardsApi = {
   async create(data, { signal } = {}) {
     return apiRequest('/api/electrical_hazard/create.php', { method: 'POST', body: data, signal });
+  },
+
+  /** Owner-only full update of hazard details. */
+  async update({ id, ...data }, { signal } = {}) {
+    return apiRequest('/api/electrical_hazard/update.php', {
+      method: 'POST',
+      body: { id, ...data },
+      signal,
+    });
   },
 
   async list(params, { signal } = {}) {

@@ -14,7 +14,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import Pagination from '@/components/Pagination';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import { linemanAssignmentsApi, workTypeLabel } from '@/api';
+import { linemanAssignmentsApi } from '@/api';
 import {
   useAssignmentList,
   useMyAssignments,
@@ -223,7 +223,6 @@ export default function Assignments() {
                 label: assignment.status === 'active' ? 'Active' : 'Inactive',
                 tone: assignment.status === 'active' ? 'success' : 'neutral',
               },
-              { label: workTypeLabel(assignment.workType), tone: 'info' },
             ]}
             meta={[
               { label: 'Assigned', value: formatDateTime(assignment.assignedAt) },
@@ -283,9 +282,6 @@ export default function Assignments() {
                     <TD>
                       <Badge tone={assignment.status === 'active' ? 'success' : 'neutral'}>
                         {assignment.status === 'active' ? 'Active' : 'Inactive'}
-                      </Badge>
-                      <Badge tone="info" className="ml-1">
-                        {workTypeLabel(assignment.workType)}
                       </Badge>
                     </TD>
                     <TD className="whitespace-nowrap text-xs text-navy-500">

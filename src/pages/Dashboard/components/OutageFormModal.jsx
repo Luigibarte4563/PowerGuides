@@ -17,7 +17,7 @@ import { formatCategory } from '@/utils/outageFeed';
 import { toFieldErrors, toUserMessage } from '@/utils/errorMessage';
 import { clearFieldError, collectErrors, hasErrors, validateRequired } from '@/utils/validators';
 
-const FIELD_ORDER = ['locationName', 'description', 'category', 'severity', 'hazardType', 'affectedHouses', 'barangayName'];
+const FIELD_ORDER = ['locationName', 'description', 'category', 'severity', 'hazardType', 'barangayName'];
 
 const FIELD_LABEL =
   '!text-[10px] !font-bold !uppercase !tracking-[0.16em] !text-white/45';
@@ -98,7 +98,6 @@ export default function OutageFormModal({ open, onClose, outage = null, onResult
     severity: outage?.severity || (isEdit ? '' : 'moderate'),
     hazardType: outage?.hazardType || 'none',
     barangayName: outage?.barangay ?? '',
-    affectedHouses: Number.isFinite(outage?.affectedHouses) ? String(outage.affectedHouses) : '',
     startedAt: toDateTimeLocal(outage?.startedAt),
     location: initialPoint,
   }));
@@ -276,7 +275,6 @@ export default function OutageFormModal({ open, onClose, outage = null, onResult
       severity: values.severity || undefined,
       hazard_type: values.hazardType || 'none',
       barangay_name: values.barangayName || '',
-      affected_houses: values.affectedHouses === '' ? undefined : Number(values.affectedHouses),
       started_at: values.startedAt || undefined,
       ...(pinTouched && values.location
         ? { latitude: values.location.lat, longitude: values.location.lng }
@@ -402,17 +400,6 @@ export default function OutageFormModal({ open, onClose, outage = null, onResult
                   labelClassName={FIELD_LABEL}
                   className={FIELD_CONTROL}
                   placeholder="Moderate"
-                />
-                <Input
-                  label="Houses Affected"
-                  type="number"
-                  min="1"
-                  placeholder="e.g. 12"
-                  value={values.affectedHouses}
-                  onChange={(event) => setField('affectedHouses', event.target.value)}
-                  error={errors.affectedHouses}
-                  labelClassName={FIELD_LABEL}
-                  className={FIELD_CONTROL}
                 />
                 <Select
                   label="Category"

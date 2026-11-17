@@ -137,7 +137,9 @@ This module helps residents locate charging facilities and manage station inform
   search term, with an adjustable radius on the nearby tab.
 - Nearby Stations – Shows power stations near the user's saved location with distances.
 - Station Management – Allows users to add one station post per account and update or
-  delete their own post, showing operating hours, charging type, and access type.
+  delete their own post. Operating hours (optional) must be a number between 0 and 24.
+  Charging type (optional) defaults to Type-2 AC; choose from predefined connectors or
+  select Other to enter a custom type.
 
 ## Notification Module
 

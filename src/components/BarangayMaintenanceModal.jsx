@@ -27,9 +27,9 @@ import { useToast } from '@/context/ToastContext';
  * client-side convenience over a list the lineman can already read in full.
  *
  * Status changes are different: `maintenance/update.php` admits a lineman for STATUS-ONLY
- * updates when an active assignment with work_type 'maintenance' or 'both' covers one of
- * the schedule's barangays. The backend re-checks all of that, so `canChangeStatus` here
- * only hides a button the server would refuse anyway.
+ * updates when an active assignment covers one of the schedule's barangays. The backend
+ * re-checks all of that, so `canChangeStatus` here only hides a button the server would
+ * refuse anyway.
  */
 export default function BarangayMaintenanceModal({
   open,

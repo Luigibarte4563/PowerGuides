@@ -42,7 +42,7 @@ export function useUpdateRole() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ userId, roleId }) => adminApi.updateRole({ userId, roleId }),
+    mutationFn: ({ userId, role }) => adminApi.updateRole({ userId, role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       queryClient.invalidateQueries({ queryKey: ADMIN_QUERY_KEYS.stats });

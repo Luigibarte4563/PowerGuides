@@ -13,14 +13,14 @@ import { apiRequest, pickList } from './client';
  *                        Directory of every account: name, email, role, provider,
  *                        created_at, last_login. No password hash, google_id or
  *                        refresh_token is ever selected.
- *   update_role.php POST { user_id, role_id }
- *                        -> 200 { success, message, data: { id, previous_role, role, role_id } }
+ *   update_role.php POST { user_id, role }
+ *                        -> 200 { success, message, data: { id, previous_role, role } }
  *                        400 bad input / unknown role / changing your OWN role;
  *                        404 unknown user; idempotent when the target already holds
  *                        the role. The JWT carries the role claim, so the change
  *                        reaches the target's API permissions at their next sign-in -
  *                        the message returned says exactly that.
- *   create_user.php POST { first_name, last_name, email, password, role_id? }
+ *   create_user.php POST { first_name, last_name, email, password, role? }
  *                        -> 201 { success, message, data: AdminUser }
  *                        The authenticated counterpart of auth/register.php, with the
  *                        one power registration refuses: choosing the role. Validation
@@ -35,14 +35,13 @@ import { apiRequest, pickList } from './client';
  *                        top barangays by report count.
  */
 
-/** Row shape returned by users.php. */
+/** Row shape returned by users.php. `role` is the ENUM string, not a lookup id. */
 function readUser(row) {
   return {
     id: Number(row?.id),
     name: row?.name || '',
     email: row?.email || '',
     role: row?.role || 'user',
-    roleId: Number(row?.role_id),
     authProvider: row?.auth_provider || 'local',
     lastLogin: row?.last_login || '',
     createdAt: row?.created_at || '',
@@ -115,22 +114,22 @@ export const adminApi = {
   },
 
   /** Admin only. Idempotent when the target already holds the role. */
-  async updateRole({ userId, roleId }, { signal } = {}) {
+  async updateRole({ userId, role }, { signal } = {}) {
     return apiRequest('/api/admin/update_role.php', {
       method: 'POST',
-      body: { user_id: userId, role_id: roleId },
+      body: { user_id: userId, role },
       signal,
     });
   },
 
   /**
-   * Admin only. Creates a local account; `roleId` may be omitted, which the server
+   * Admin only. Creates a local account; `role` may be omitted, which the server
    * reads as the plain `user` role.
    */
-  async createUser({ firstName, middleName, lastName, email, password, roleId }, { signal } = {}) {
+  async createUser({ firstName, middleName, lastName, email, password, role }, { signal } = {}) {
     const body = { first_name: firstName, last_name: lastName, email, password };
     if (middleName) body.middle_name = middleName;
-    if (roleId) body.role_id = roleId;
+    if (role) body.role = role;
     return apiRequest('/api/admin/create_user.php', { method: 'POST', body, signal });
   },
 

@@ -58,6 +58,7 @@ export default function Hazards() {
   const [severityFilter, setSeverityFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [formOpen, setFormOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
   const [statusTarget, setStatusTarget] = useState(null);
   const debouncedSearch = useDebouncedValue(search);
 
@@ -264,9 +265,14 @@ export default function Hazards() {
               ].filter(Boolean)}
               actions={
                 owned ? (
-                  <Button size="xs" variant="outline" icon={RefreshCw} onClick={() => setStatusTarget(hazard)}>
-                    Update status
-                  </Button>
+                  <>
+                    <Button size="xs" variant="outline" icon={RefreshCw} onClick={() => setStatusTarget(hazard)}>
+                      Update status
+                    </Button>
+                    <Button size="xs" variant="outline" icon={AlertTriangle} onClick={() => setEditTarget(hazard)}>
+                      Edit
+                    </Button>
+                  </>
                 ) : null
               }
             />
@@ -275,7 +281,15 @@ export default function Hazards() {
       />
       </MapWorkspace>
 
-      <HazardFormModal open={formOpen} onClose={() => setFormOpen(false)} defaultLocation={coords} />
+      <HazardFormModal
+        open={formOpen || Boolean(editTarget)}
+        onClose={() => {
+          setFormOpen(false);
+          setEditTarget(null);
+        }}
+        hazard={editTarget || null}
+        defaultLocation={coords}
+      />
 
       <StatusModal
         hazard={statusTarget}

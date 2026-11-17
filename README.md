@@ -409,7 +409,7 @@ cookie so the rest of the app is unchanged.
 | `outage_report/delete.php` | `{ id }`, soft delete (`status = rejected`). |
 | `maintenance/get.php` | one row per schedule with `locations: [{ barangay_name, lat, lng }]` and `radius` in metres. |
 | `maintenance/get_upcoming.php` | **Count only** (`upcoming_count`), so the Upcoming tab filters `get.php` by `upcoming`/`ongoing`. |
-| `power_station/create.php` | `{ station_name*, location_name*, station_type, access_type, availability_status, barangay_name?, operating_hours?, charging_type?, description? }`. Coordinates geocoded from `location_name`; **one station per user**; returns no id. |
+| `power_station/create.php` | `{ station_name*, location_name*, station_type, access_type, availability_status, barangay_name?, operating_hours?, charging_type?, description? }`. Coordinates geocoded from `location_name`; **one station per user**; returns no id. `operating_hours` is optional and must be a number between 0 and 24. `charging_type` is optional and defaults to `Type-2 AC`; choose `Other` to enter a custom connector type. |
 | `power_station/delete.php` | `{ station_id }` (not `id`). |
 | `power_station/get_available.php` | **Count only** (`total_available`) - the Available tab filters the list client-side. |
 | `power_station/get_near_location.php` | takes **only `radius`**; the centre is the user's saved primary location. |

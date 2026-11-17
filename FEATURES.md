@@ -124,7 +124,8 @@ Sign-in lands each role on its own home: `admin` → `/admin`, staff → `/compa
 - Tabs for **All / Available / Near me / My Posts**, plus a map of every station
 - Filter by station type, access type and availability status
 - Post a station (one per user), then update or delete your own
-- See operating hours and charging type
+- Operating hours (optional) must be a number between 0 and 24
+- Charging type (optional) defaults to **Type-2 AC**; choose from predefined connectors or select **Other** to enter a custom type
 
 ### Notifications
 

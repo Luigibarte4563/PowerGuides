@@ -27,7 +27,7 @@ const EMPTY_CREATE_FORM = {
   lastName: '',
   email: '',
   password: '',
-  roleId: '',
+  role: '',
 };
 
 /** Same rules the API enforces (mirrored from auth/register.php). */
@@ -42,7 +42,7 @@ function validateCreateForm(form) {
 /**
  * Module ADMIN - user directory & role management (`/admin/users`).
  *
- * The screen the platform never had: roles were granted by editing users.role_id in
+ * The screen the platform never had: roles were granted by editing users.role in
  * the database by hand. Now `admin/users.php` lists every account and
  * `admin/update_role.php` performs the change, both admin-only.
  *
@@ -62,7 +62,7 @@ export default function Users() {
   const [role, setRole] = useState('');
   const [page, setPage] = useState(1);
   const [changing, setChanging] = useState(null);
-  const [selectedRoleId, setSelectedRoleId] = useState('');
+  const [selectedRole, setSelectedRole] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
 
@@ -96,32 +96,30 @@ export default function Users() {
   const roleOptions = useMemo(() => {
     const map = new Map();
     (referenceRoles || []).forEach((r) => {
-      const numericId = Number(r?.rowId);
-      if (numericId && r?.name) map.set(numericId, r.name);
+      if (r?.id) map.set(r.id, r.name);
     });
     rows.forEach((row) => {
-      if (row.roleId && row.role) map.set(row.roleId, row.role);
+      if (row.role) map.set(row.role, row.role);
     });
     return [...map.entries()]
-      .map(([id, name]) => ({ value: String(id), label: roleLabel(name, referenceRoles) }))
+      .map(([role, name]) => ({ value: role, label: roleLabel(name, referenceRoles) }))
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [referenceRoles, rows]);
 
   const openChange = (row) => {
     setChanging(row);
-    setSelectedRoleId(String(row.roleId));
+    setSelectedRole(row.role);
   };
 
   const closeChange = () => {
     setChanging(null);
-    setSelectedRoleId('');
+    setSelectedRole('');
   };
 
   const confirmChange = async () => {
-    const roleId = Number(selectedRoleId);
-    if (!changing || !roleId || roleId === changing.roleId) return;
+    if (!changing || !selectedRole || selectedRole === changing.role) return;
     try {
-      const result = await updateRoleMutation.mutateAsync({ userId: changing.id, roleId });
+      const result = await updateRoleMutation.mutateAsync({ userId: changing.id, role: selectedRole });
       toast.success(result?.message || 'Role updated.', {
         title: `${changing.name || 'User'} updated`,
       });
@@ -156,7 +154,7 @@ export default function Users() {
         lastName: createForm.lastName.trim(),
         email: createForm.email.trim(),
         password: createForm.password,
-        roleId: createForm.roleId ? Number(createForm.roleId) : undefined,
+        role: createForm.role || undefined,
       });
       const created = result?.data;
       toast.success(
@@ -364,8 +362,8 @@ export default function Users() {
               onClick={confirmChange}
               disabled={
                 updateRoleMutation.isPending ||
-                !selectedRoleId ||
-                Number(selectedRoleId) === changing?.roleId
+                !selectedRole ||
+                selectedRole === changing?.role
               }
             >
               {updateRoleMutation.isPending ? 'Saving…' : 'Change role'}
@@ -378,8 +376,8 @@ export default function Users() {
             label="New role"
             aria-label="New role"
             options={roleOptions}
-            value={selectedRoleId}
-            onChange={(event) => setSelectedRoleId(event.target.value)}
+            value={selectedRole}
+            onChange={(event) => setSelectedRole(event.target.value)}
             required
           />
           <p className="rounded-control bg-warning-50 p-3 text-xs text-warning-700 dark:bg-warning-500/10 dark:text-warning-200">
@@ -458,8 +456,8 @@ export default function Users() {
             aria-label="Role for the new user"
             options={roleOptions}
             placeholder="Community member (default)"
-            value={createForm.roleId}
-            onChange={(event) => setCreateForm((f) => ({ ...f, roleId: event.target.value }))}
+            value={createForm.role}
+            onChange={(event) => setCreateForm((f) => ({ ...f, role: event.target.value }))}
           />
           <button type="submit" hidden aria-hidden="true" tabIndex={-1} />
         </form>

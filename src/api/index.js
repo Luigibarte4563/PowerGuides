@@ -33,8 +33,5 @@ export {
   isActiveAssignment,
   ACTIVE_ASSIGNMENT_STATUS,
   INACTIVE_ASSIGNMENT_STATUS,
-  ASSIGNMENT_WORK_TYPES,
-  WORK_TYPE_LABELS,
-  workTypeLabel,
 } from './linemanAssignments';
 export { adminApi } from './admin';
