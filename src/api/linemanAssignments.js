@@ -135,6 +135,36 @@ export const linemanAssignmentsApi = {
       raw: payload,
     };
   },
+
+  /** Staff activity for a lineman - verifications, updates and assignment history.
+   * Managers can view any lineman; linemen can view their own. */
+  async activity({ linemanId, limit = 50 }, { signal } = {}) {
+    const payload = await apiRequest('/api/lineman_assignment/activity.php', {
+      params: { lineman_id: linemanId, limit },
+      signal,
+    });
+    return {
+      lineman: payload?.lineman ?? null,
+      summary: payload?.summary ?? null,
+      activities: pickList(payload).map((row) => ({
+        id: Number(row?.id),
+        type: row?.type || '',
+        outageReportId: Number(row?.outage_report_id ?? 0),
+        reportKey: row?.report_key || '',
+        locationName: row?.location_name || '',
+        barangayName: row?.barangay_name || '',
+        category: row?.category || '',
+        severity: row?.severity || '',
+        reportStatus: row?.report_status || row?.status || '',
+        action: row?.action || '',
+        message: row?.message || row?.notes || '',
+        verification: row?.verification || '',
+        performedAt: row?.performed_at || row?.updated_at || row?.assigned_at || '',
+      })),
+      count: payload?.count ?? null,
+      raw: payload,
+    };
+  },
 };
 
 /** The single value `status` accepts besides `inactive`. */

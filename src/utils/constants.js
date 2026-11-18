@@ -244,6 +244,7 @@ export const COMPANY_QUERY_KEYS = {
   linemanAssignments: (params) => ['lineman-assignments', 'all', params],
   linemen: ['lineman-assignments', 'linemen'],
   myAssignments: ['lineman-assignments', 'mine'],
+  linemanActivity: (linemanId) => ['lineman-assignments', 'activity', linemanId],
 };
 
 /**

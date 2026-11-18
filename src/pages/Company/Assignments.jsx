@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { MapPin, Pencil, Plus, Trash2, UserCheck } from 'lucide-react';
+import { MapPin, Pencil, Plus, Trash2, UserCheck, UserPlus, Clock, Info } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
 import Badge from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +12,7 @@ import MyAssignmentList from '@/components/MyAssignmentList';
 import RecordCard from '@/components/RecordCard';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Pagination from '@/components/Pagination';
+import Modal from '@/components/ui/Modal';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { linemanAssignmentsApi } from '@/api';
@@ -19,9 +20,10 @@ import {
   useAssignmentList,
   useMyAssignments,
   useInvalidateAssignments,
+  useLinemanActivity,
 } from '@/hooks/useLinemanAssignments';
 import { COMPANY_PAGE_SIZE, COMPANY_QUERY_KEYS } from '@/utils/constants';
-import { formatDateTime } from '@/utils/formatters';
+import { formatDateTime, formatRelativeTime } from '@/utils/formatters';
 import { toUserMessage } from '@/utils/errorMessage';
 import AssignmentFormModal from './components/AssignmentFormModal';
 
@@ -49,11 +51,23 @@ export default function Assignments() {
   const toast = useToast();
   const invalidateAssignments = useInvalidateAssignments();
 
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState('active');
   const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deactivating, setDeactivating] = useState(null);
+  const [activityLinemanId, setActivityLinemanId] = useState(null);
+  const [activityLinemanName, setActivityLinemanName] = useState('');
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityWorkFilter, setActivityWorkFilter] = useState('all'); // 'all' | 'done'
+
+  const activityQuery = useLinemanActivity(
+    { linemanId: activityLinemanId, limit: 50, work_type: activityWorkFilter },
+    { enabled: activityOpen && Boolean(activityLinemanId) && isManager }
+  );
+  const activities = useMemo(() => activityQuery.data?.activities || [], [activityQuery.data]);
+  const linemanInfo = useMemo(() => activityQuery.data?.lineman || null, [activityQuery.data]);
+  const activitySummary = useMemo(() => activityQuery.data?.summary || null, [activityQuery.data]);
 
   const listQuery = useAssignmentList({ status: status || undefined }, { enabled: isManager });
 
@@ -65,8 +79,8 @@ export default function Assignments() {
    * A lineman landing here is a normal outcome rather than a mistake: `defaultRootFor`
    * sends `lineman` to `/company`, so this tab is where they actually begin. They are
    * shown their OWN active rows from `my.php` - the same view `/dashboard/assignments`
-   * renders - instead of a dead end, and `enabled: isManager` keeps the manager table off
-   * the wire for them so no request here can answer 403.
+   * renders - instead of a dead end, and `enabled: isManager` keeps the manager queries
+   * off the wire so the tab cannot fire a list of 403s at them.
    */
   const myQuery = useMyAssignments({ enabled: isLineman && !isManager });
   const myRows = useMemo(() => myQuery.data || [], [myQuery.data]);
@@ -88,6 +102,17 @@ export default function Assignments() {
 
   const deactivateMutation = useMutation({
     mutationFn: (id) => linemanAssignmentsApi.remove(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['lineman-assignments', 'all', { status }] });
+      const previous = queryClient.getQueryData(['lineman-assignments', 'all', { status }]);
+      queryClient.setQueryData(['lineman-assignments', 'all', { status }], (old) =>
+        old ? old.filter((row) => row.id !== id) : old
+      );
+      return { previous };
+    },
+    onError: (err, id, context) => {
+      queryClient.setQueryData(['lineman-assignments', 'all', { status }], context?.previous);
+    },
     onSuccess: (result) => {
       toast.success(result?.message || 'Assignment deactivated.', {
         title: 'Assignment removed',
@@ -110,6 +135,12 @@ export default function Assignments() {
   const openEdit = (assignment) => {
     setEditing(assignment);
     setFormOpen(true);
+  };
+
+  const openActivity = (linemanId, linemanName) => {
+    setActivityLinemanId(linemanId);
+    setActivityLinemanName(linemanName);
+    setActivityOpen(true);
   };
 
   if (!isManager) {
@@ -237,6 +268,15 @@ export default function Assignments() {
                 </Button>
                 <Button
                   size="sm"
+                  variant="outline"
+                  icon={UserPlus}
+                  onClick={() => openActivity(assignment.linemanId, assignment.linemanName)}
+                  aria-label={`View activity for ${assignment.linemanName}`}
+                >
+                  Activity
+                </Button>
+                <Button
+                  size="sm"
                   variant="ghost"
                   icon={Trash2}
                   className="text-danger-600"
@@ -303,6 +343,15 @@ export default function Assignments() {
                         </Button>
                         <Button
                           size="sm"
+                          variant="outline"
+                          icon={UserPlus}
+                          onClick={() => openActivity(assignment.linemanId, assignment.linemanName)}
+                          aria-label={`View activity for ${assignment.linemanName}`}
+                        >
+                          Activity
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="ghost"
                           icon={Trash2}
                           className="text-danger-600"
@@ -362,6 +411,147 @@ export default function Assignments() {
           await deactivateMutation.mutateAsync(deactivating.id);
         }}
       />
+
+      {/* Lineman Activity Modal */}
+      <Modal
+        open={activityOpen}
+        onClose={() => {
+          setActivityOpen(false);
+          setActivityLinemanId(null);
+          setActivityLinemanName('');
+          setActivityWorkFilter('all');
+        }}
+        title="Lineman Activity"
+        description={
+          linemanInfo
+            ? `${linemanInfo.name} • ${linemanInfo.email}`
+            : activityLinemanName
+        }
+        size="xl"
+      >
+        {activityQuery.isLoading ? (
+          <div className="flex flex-col items-center justify-center py-8">
+            <Clock className="h-6 w-6 animate-spin mb-2" />
+            <p className="text-sm text-navy-500">Loading activity…</p>
+          </div>
+        ) : activityQuery.isError ? (
+          <div className="p-4 rounded-card border border-navy-100 bg-navy-50">
+            <p className="text-sm text-danger-600">
+              Could not load activity: {toUserMessage(activityQuery.error)}
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Work filter tabs */}
+            <div className="flex items-center gap-2 mb-6 border-b border-navy-100 pb-2">
+              <Button
+                size="sm"
+                variant={activityWorkFilter === 'all' ? 'primary' : 'outline'}
+                onClick={() => setActivityWorkFilter('all')}
+              >
+                All Work
+              </Button>
+              <Button
+                size="sm"
+                variant={activityWorkFilter === 'done' ? 'primary' : 'outline'}
+                onClick={() => setActivityWorkFilter('done')}
+              >
+                Done Work
+              </Button>
+              <span className="ml-auto text-xs text-navy-400">
+                {activitySummary?.total_done ?? 0} done of{' '}
+                {activitySummary?.total_activities ?? 0} total
+              </span>
+            </div>
+
+            {activities.length === 0 ? (
+              <div className="p-8 rounded-card border border-navy-100 bg-navy-50 text-center">
+                <Info className="h-8 w-8 mx-auto mb-2 text-navy-400" />
+                <h3 className="text-sm font-semibold text-navy-900">
+                  {activityWorkFilter === 'done' ? 'No done work yet' : 'No activity yet'}
+                </h3>
+                <p className="text-xs text-navy-500 mt-1">
+                  {activityWorkFilter === 'done'
+                    ? "This lineman hasn't completed any resolved or verified reports yet."
+                    : 'This lineman has no work activity recorded yet.'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="p-4 rounded-card border border-navy-100 bg-white">
+                    <p className="text-xs text-navy-400 uppercase font-semibold">Verifications</p>
+                    <p className="text-2xl font-bold text-navy-900">
+                      {activities.filter((a) => a.type === 'verification').length}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-card border border-navy-100 bg-white">
+                    <p className="text-xs text-navy-400 uppercase font-semibold">Updates</p>
+                    <p className="text-2xl font-bold text-navy-900">
+                      {activities.filter((a) => a.type === 'update').length}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-card border border-navy-100 bg-white">
+                    <p className="text-xs text-navy-400 uppercase font-semibold">Done Work</p>
+                    <p className="text-2xl font-bold text-navy-900">
+                      {activities.filter((a) => a.is_done).length}
+                    </p>
+                  </div>
+                </div>
+
+                <Table className="mt-4">
+                  <THead>
+                    <tr>
+                      <TH>Time</TH>
+                      <TH>Action</TH>
+                      <TH>Details</TH>
+                      <TH>Barangay</TH>
+                      <TH className="text-right">Status</TH>
+                    </tr>
+                  </THead>
+                  <TBody>
+                    {activities.map((activity) => (
+                      <TR key={activity.id}>
+                        <TD className="whitespace-nowrap text-xs text-navy-500">
+                          {formatRelativeTime(activity.performedAt)}
+                        </TD>
+                        <TD className="text-sm text-navy-900">
+                          {activity.action}
+                        </TD>
+                        <TD className="text-sm">
+                          {activity.type === 'verification' ? (
+                            <span className="text-navy-600">
+                              {activity.verification}{' '}
+                              {activity.reportKey ? `· #${activity.reportKey}` : ''}
+                            </span>
+                          ) : activity.type === 'update' ? (
+                            <span className="text-navy-600">
+                              {activity.reportKey ? `Report #${activity.reportKey}` : 'Report'}
+                              {activity.message ? ` · "${activity.message}"` : ''}
+                            </span>
+                          ) : null}
+                        </TD>
+                        <TD className="text-sm text-navy-500">
+                          {activity.barangayName || '—'}
+                        </TD>
+                        <TD className="text-right text-xs">
+                          <Badge
+                            tone={
+                              activity.is_done ? 'success' : 'neutral'
+                            }
+                          >
+                            {activity.report_status?.charAt(0).toUpperCase() + activity.report_status?.slice(1) || '—'}
+                          </Badge>
+                        </TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </>
+            )}
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

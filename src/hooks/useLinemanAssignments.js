@@ -66,3 +66,22 @@ export function useInvalidateAssignments() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: ['lineman-assignments'] });
 }
+
+/** Activity (verifications, updates, assignment history) for a given lineman. */
+export function useLinemanActivity(
+  { linemanId, limit = 50 } = {},
+  { enabled = true } = {}
+) {
+  return useQuery({
+    queryKey: COMPANY_QUERY_KEYS.linemanActivity(linemanId),
+    queryFn: async ({ signal }) => {
+      const result = await linemanAssignmentsApi.activity(
+        { linemanId, limit },
+        { signal }
+      );
+      return result;
+    },
+    enabled: enabled && linemanId != null,
+    retry: 1,
+  });
+}
